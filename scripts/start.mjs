@@ -1,6 +1,8 @@
 // One command to run the whole platform locally:
 //   node scripts/start.mjs            -> database, API, AI agent, web, desktop
 //   node scripts/start.mjs --no-desktop
+//   node scripts/start.mjs --lan          -> join links and the website use this laptop's Wi-Fi address,
+//                                            so a friend's laptop on the same network can take the exam
 // First run creates .env (with fresh secrets), the Python venv, the schema and the demo seed.
 import { spawn, spawnSync } from 'node:child_process';
 import { copyFileSync, existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
@@ -8,6 +10,7 @@ import { randomBytes } from 'node:crypto';
 import { createConnection, createServer } from 'node:net';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { lanAddresses } from './lan.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = new Set(process.argv.slice(2));
@@ -29,6 +32,24 @@ function ensureEnv() {
     writeFileSync(env, text);
     log('SETUP', 'Created .env with fresh JWT_SECRET and AGENT_API_KEY');
   }
+}
+
+const envValue = (key) => readFileSync(join(root, '.env'), 'utf8').match(new RegExp(`^${key}="?([^"\n]*)`, 'm'))?.[1] ?? '';
+
+/**
+ * With --lan, the API builds join links and signed photo URLs on this laptop's Wi-Fi address and the
+ * website calls the API there, so emailed links open on another laptop. Localhost keeps working too.
+ */
+function lanEnv(webPort) {
+  if (!args.has('--lan')) return { lan: null, api: {}, web: {} };
+  const lan = lanAddresses()[0]?.address;
+  if (!lan) throw new Error('--lan: no Wi-Fi or Ethernet address found. Connect to a network, or run "npm start" for this laptop only.');
+  const origins = [`http://${lan}:${webPort}`, ...envValue('CLIENT_URL').split(','), `http://localhost:${webPort}`].map((s) => s.trim()).filter(Boolean);
+  return {
+    lan,
+    api: { CLIENT_URL: [...new Set(origins)].join(','), PUBLIC_API_URL: `http://${lan}:4000`, APP_DOWNLOAD_URL: `http://${lan}:${webPort}/download` },
+    web: { NEXT_PUBLIC_API_URL: `http://${lan}:4000`, LAN_HOST: lan },
+  };
 }
 
 // With shell: true on Windows, an unquoted path like C:\Program Files\nodejs\node.exe splits at the space.
@@ -198,10 +219,11 @@ async function main() {
     if (!existsSync(venvPython)) step('SETUP', process.execPath, ['scripts/python.cjs', 'install']);
     run('AGENT', process.execPath, ['scripts/python.cjs', 'run']);
   }
-  run('API', npm, ['run', 'dev', '-w', 'apps/api'], { critical: true });
-  await waitForPort(4000);
   const webPort = await availablePort();
-  run('WEB', npm, ['run', 'dev', '-w', 'apps/web', '--', '--port', String(webPort)]);
+  const net = lanEnv(webPort);
+  run('API', npm, ['run', 'dev', '-w', 'apps/api'], { critical: true, env: net.api });
+  await waitForPort(4000);
+  run('WEB', npm, ['run', 'dev', '-w', 'apps/web', '--', '--port', String(webPort)], { env: net.web });
   if (!args.has('--no-desktop')) run('DESKTOP', npm, ['run', 'dev', '-w', 'apps/desktop']);
 
   setTimeout(() => {
@@ -211,7 +233,11 @@ async function main() {
   API                             http://localhost:4000/api/v1
   AI agent                        http://127.0.0.1:8000/health
   Desktop app                     opens as a window
-  Dev toolbar                     Ctrl+Shift+D in the web or desktop app
+${net.lan ? `
+  [1mSame Wi-Fi (--lan)[0m: emailed join links use http://${net.lan}:${webPort}
+  Your friend pastes the link in the Smart Proctor app; it connects to ${net.lan}:4000 by itself.
+  If it cannot connect, allow Node.js through Windows Defender Firewall for private networks.
+` : ''}  Dev toolbar                     Ctrl+Shift+D in the web or desktop app
 
   Admin      admin@wue.in / Admin@123
   Mentor     mentor@wue.in / Mentor@123

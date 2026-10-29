@@ -3,22 +3,10 @@
 //   node scripts/share.mjs --tunnel   -> also opens a free Cloudflare quick tunnel for use over the internet
 // The other laptop types the printed address into "Exam server" on the desktop sign-in screen.
 import { spawn, spawnSync } from 'node:child_process';
-import { networkInterfaces } from 'node:os';
+import { lanAddresses } from './lan.mjs';
 
 const API_PORT = 4000;
 const isWin = process.platform === 'win32';
-
-/** Private IPv4 addresses of this laptop (Wi-Fi or Ethernet), skipping virtual adapters where possible. */
-function lanAddresses() {
-  const out = [];
-  for (const [name, addrs] of Object.entries(networkInterfaces())) {
-    if (/vEthernet|VirtualBox|VMware|WSL|Hyper-V|Loopback/i.test(name)) continue;
-    for (const a of addrs ?? []) {
-      if (a.family === 'IPv4' && !a.internal && /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(a.address)) out.push({ name, address: a.address });
-    }
-  }
-  return out;
-}
 
 async function apiUp() {
   try {

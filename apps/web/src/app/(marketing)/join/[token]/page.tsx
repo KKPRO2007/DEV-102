@@ -29,7 +29,15 @@ export default function JoinPage() {
   }, [token])
 
   const copy = async () => {
-    await navigator.clipboard.writeText(link)
+    // Over http://<wifi-address> (npm run start:lan) the page is not a secure context and has no Clipboard API.
+    if (navigator.clipboard) await navigator.clipboard.writeText(link)
+    else {
+      const field = Object.assign(document.createElement('textarea'), { value: link })
+      document.body.append(field)
+      field.select()
+      document.execCommand('copy')
+      field.remove()
+    }
     setCopied(true)
     window.setTimeout(() => setCopied(false), 2000)
   }

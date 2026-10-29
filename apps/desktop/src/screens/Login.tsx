@@ -4,7 +4,7 @@ import {
   AlertCircle, ArrowLeft, ArrowRight, CalendarClock, Check, ClipboardPaste, Clock3, Copy, Eye, EyeOff, Fingerprint, FlaskConical, GraduationCap, Link2, Loader2,
   Lock, MailCheck, MonitorCheck, ShieldCheck, Video, Wifi, WifiOff, type LucideIcon,
 } from 'lucide-react'
-import { api, devApi, parseInviteToken, type InvitePreview } from '../lib/api'
+import { api, devApi, parseInviteToken, serverFromInviteLink, type InvitePreview } from '../lib/api'
 import { API_ORIGIN, HttpError, setServer } from '../lib/http'
 import { useApp } from '../lib/store'
 import { backgroundFor, getTimeTheme, type Look, type TimeTheme } from '../lib/theme'
@@ -96,6 +96,14 @@ export default function Login({ onLoggedIn }: LoginProps) {
       setError('That does not look like an exam link. Copy the whole link from your invitation email.')
       return
     }
+    // A link from the organizer's laptop on this Wi-Fi points the app at that laptop.
+    const lanServer = serverFromInviteLink(text)
+    if (lanServer && lanServer !== API_ORIGIN) {
+      setServer(lanServer)
+      setServerText(lanServer)
+      setServerState(null)
+      void pingServer()
+    }
     setBusy(true)
     setError(null)
     try {
@@ -108,7 +116,7 @@ export default function Login({ onLoggedIn }: LoginProps) {
     } finally {
       setBusy(false)
     }
-  }, [])
+  }, [pingServer])
 
   // If the invitation link is already on the clipboard, offer it straight away.
   useEffect(() => {
@@ -288,7 +296,7 @@ export default function Login({ onLoggedIn }: LoginProps) {
                     </button>
                   </div>
                   {error && <ErrorNote text={error} />}
-                  <button type="submit" disabled={busy || offline || !link.trim()} className={submitCls}>
+                  <button type="submit" disabled={busy || (offline && !serverFromInviteLink(link)) || !link.trim()} className={submitCls}>
                     {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <ArrowRight className="h-4 w-4" aria-hidden />}
                     {busy ? 'Checking link…' : 'Continue'}
                   </button>

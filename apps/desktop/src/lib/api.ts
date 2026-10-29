@@ -51,6 +51,20 @@ export function parseInviteToken(text: string): string | null {
   return /(?:^|\/join\/|\s)([a-f0-9]{48})(?=$|[/?#\s])/i.exec(text.trim())?.[1]?.toLowerCase() ?? null;
 }
 
+/**
+ * A link sent from an organizer's laptop on the same Wi-Fi (`npm run start:lan`) names that laptop,
+ * e.g. http://192.168.1.20:3000/join/…, whose API is on port 4000. Null for any other link.
+ */
+export function serverFromInviteLink(text: string): string | null {
+  try {
+    const { protocol, hostname } = new URL(text.trim());
+    if (protocol !== 'http:' || !/^(10\.\d{1,3}|192\.168|172\.(1[6-9]|2\d|3[01]))\.\d{1,3}\.\d{1,3}$/.test(hostname)) return null;
+    return `http://${hostname}:4000`;
+  } catch {
+    return null;
+  }
+}
+
 export interface AvailableExam { id: string; code: string; title: string; startsAt: string; endsAt: string; status: 'SCHEDULED' | 'LIVE' }
 
 let current: { auth: AuthUser; exam: Exam; sessionId?: string } | null = null;

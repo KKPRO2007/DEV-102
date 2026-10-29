@@ -206,10 +206,10 @@ LIVE-01 has these exam settings on, and organizations can turn them on for any e
 - **Same order for everyone:** shuffle is off.
 - **Live microphone:** proctors watching the screen can also listen, and the consent screen says so.
 
-1. On your laptop: `node scripts/start.mjs --reseed` (the first time; afterwards `npm start`).
+1. On your laptop: `node scripts/start.mjs --reseed` (the first time; afterwards `npm start`). For a friend on the same Wi-Fi use `npm run start:lan` instead: join links in emails then use your Wi-Fi address (for example `http://172.16.x.x:3000/join/…`), so they open on the friend's laptop.
 2. Give your friend the installer from `apps/desktop/release` (build it with `npm run build -w apps/desktop`).
 3. Connect:
-   - **Same Wi-Fi:** `npm run share` prints your laptop's address, for example `172.16.x.x`. On the friend's laptop press **Change** next to *Exam server* on the sign-in screen and type it.
+   - **Same Wi-Fi:** with `npm run start:lan`, pasting the emailed link into the app connects to your laptop by itself. Otherwise `npm run share` prints your laptop's address; on the friend's laptop press **Change** next to *Exam server* on the sign-in screen and type it. Windows asks once to allow Node.js through the firewall: allow it for private networks.
    - **Over the internet:** install cloudflared once (`winget install --id Cloudflare.cloudflared`), then `npm run share:tunnel`, and give your friend the printed `https://….trycloudflare.com` address.
 4. Website, Organization panel > LIVE-01 > Credentials:
    - add your friend as a candidate and send the email; the join link and password are also under **Reveal & copy**
