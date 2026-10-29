@@ -11,7 +11,7 @@ vi.mock('../src/lib/db.js', () => ({
   prisma: {
     candidate: {
       findUnique: vi.fn(async () => ({
-        id: 'c-1', name: 'Rahul Verma', email: 'rahul@example.com', userId: 'WUE261000', status: 'INVITED', examId: 'e-1',
+        id: 'c-1', name: 'Rahul Verma', email: 'rahul@gmail.com', userId: 'WUE261000', status: 'INVITED', examId: 'e-1',
         credentialCipher: null as string | null,
         exam: { id: 'e-1', title: 'Live Test', code: 'LIVE-01', createdById: 'org-1', startsAt: new Date('2026-10-29T10:00:00Z'), endsAt: new Date(Date.now() + 86_400_000) },
       })),
@@ -60,7 +60,7 @@ beforeEach(() => {
   ];
   const cand = vi.mocked(prisma.candidate.findUnique);
   cand.mockImplementation((async () => ({
-    id: 'c-1', name: 'Rahul Verma', email: 'rahul@example.com', userId: 'WUE261000', status: 'INVITED', examId: 'e-1',
+    id: 'c-1', name: 'Rahul Verma', email: 'rahul@gmail.com', userId: 'WUE261000', status: 'INVITED', examId: 'e-1',
     credentialCipher: encrypt('Exam#1000', config.JWT_SECRET),
     exam: { id: 'e-1', title: 'Live Test', code: 'LIVE-01', createdById: 'org-1', startsAt: new Date('2026-10-29T10:00:00Z'), endsAt: new Date(Date.now() + 86_400_000) },
   })) as never);
@@ -77,8 +77,11 @@ describe('copies of a candidate link', () => {
       expect(m.html).toContain('Exam#1000');
       expect(m.html).toContain('/join/');
       expect(m.html).toContain('Rahul Verma');
+      expect(m.html).toMatch(/<a href="http:\/\/localhost:3000\/join\/[0-9a-f]{48}"/);
     }
-    expect(sent.find((m) => m.kind === 'credentials')?.to).toBe('rahul@example.com');
+    const candidateMail = sent.find((m) => m.kind === 'credentials');
+    expect(candidateMail?.to).toBe('rahul@gmail.com');
+    expect(candidateMail?.html).toMatch(/<a href="http:\/\/localhost:3000\/join\/[0-9a-f]{48}"/);
   });
 
   it('go to every admin when the exam has no creator', async () => {

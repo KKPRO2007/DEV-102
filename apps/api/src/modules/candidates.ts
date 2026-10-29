@@ -99,7 +99,8 @@ Your exam link: {{inviteLink}}` : tpl.body || DEFAULT_BODY;
     candidateId, emailStatus: r.ok ? ('SENT' as const) : ('FAILED' as const), ...(r.error ? { error: r.error } : {}),
     // Development only: with no SMTP configured the link is returned so the flow can be tested locally.
     inviteId: invite.id,
-    ...(r.outbox && !config.isProd ? { devLink: invite.link } : {}),
+    ...(!config.isProd ? { devLink: invite.link } : {}),
+    outbox: r.outbox ?? false,
   };
 }
 

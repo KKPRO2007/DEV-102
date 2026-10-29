@@ -144,7 +144,7 @@ export const importQuestions = (examId: string, rows: QuestionDraft[]) =>
 
 export interface ImportRowError { row: number; message: string }
 export interface CredentialRow { candidateId: string; name: string; email: string; examCode: string; userId: string; password: string }
-export interface EmailResult { candidateId: string; emailStatus: Candidate['emailStatus']; error?: string; inviteId?: string; devLink?: string }
+export interface EmailResult { candidateId: string; emailStatus: Candidate['emailStatus']; error?: string; inviteId?: string; devLink?: string; outbox?: boolean }
 
 export const listCandidates = (p: { examId?: string; q?: string; page?: number; pageSize?: number; sort?: string; dir?: 'asc' | 'desc' } = {}) =>
   call(get<{ items: Candidate[]; total: number }>(`/candidates${qs(p)}`))
@@ -160,9 +160,11 @@ export const revealCandidatePassword = (candidateId: string) => call(post<{ pass
 /* ------------------------------------------------------------------ join links */
 
 export interface ProctorInvite { inviteId: string; userId: string | null; name: string; email: string; status: InviteStatus; usedAt: string | null; deviceBound: boolean; createdAt: string }
+export interface ProctorProfileLookup { profile: { name: string; email: string } | null; alreadyInvited: boolean; emailUnavailable: boolean }
 /** devLink is returned only in development when no SMTP server is configured. */
-export interface InviteSent { inviteId: string; devLink?: string; password?: string }
+export interface InviteSent { inviteId: string; devLink?: string; password?: string; outbox?: boolean }
 export const listProctors = (examId: string) => call(get<ProctorInvite[]>(`/exams/${examId}/proctors`))
+export const lookupProctorEmail = (examId: string, email: string) => call(get<ProctorProfileLookup>(`/exams/${examId}/proctors/lookup?email=${encodeURIComponent(email)}`))
 export const inviteProctor = (examId: string, input: { name: string; email: string }) =>
   call(post<InviteSent & { userId: string; created: boolean }>(`/exams/${examId}/proctors`, input))
 /** Public: what a join link is for, shown on /join/<token> before the person opens the desktop app. */

@@ -90,7 +90,7 @@ export default function CandidatesPage() {
       // Sending always issues a fresh link and withdraws the previous one.
       if (r.inviteId) {
         const invite = { id: r.inviteId, status: 'PENDING' as const, deviceBound: false }
-        setRows((prev) => prev.map((x) => (x.id === row.id ? { ...x, invite } : x)))
+        setRows((prev) => prev.map((x) => (x.id === row.id ? { ...x, invite, inviteLink: r.devLink, outbox: r.outbox } : x)))
       }
     },
     [template],

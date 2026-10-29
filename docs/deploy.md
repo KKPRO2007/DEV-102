@@ -31,7 +31,8 @@ The database schema is managed by Prisma migrations in `database/prisma/migratio
    | `PUBLIC_API_URL` | The API's public URL, for example `https://dev102-api.onrender.com` |
    | `CLIENT_URL` | The website URL from step 3, for example `https://dev102.vercel.app` (comma-separate several) |
    | `APP_DOWNLOAD_URL` | `<website URL>/download` |
-   | `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Your mail provider, or leave empty |
+   | `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` | For Gmail, use `smtp.gmail.com:587`, your Gmail address, and a Google App Password (not your account password). |
+   | `MAIL_FROM` | Optional. Leave blank to send from `SMTP_USER`; Gmail only permits a different sender address when it is a verified alias. |
 
    Save; Render redeploys the API.
 4. Check `https://<api>/health` returns `{"ok":true,...}`.

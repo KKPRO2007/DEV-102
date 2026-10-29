@@ -16,6 +16,8 @@ export interface CredentialRow {
   password: string
   status: SendStatus
   error?: string
+  inviteLink?: string
+  outbox?: boolean
   invite?: { id: string; status: InviteStatus; deviceBound: boolean }
 }
 
@@ -186,6 +188,8 @@ export default function CredentialsTable({ rows, examId, busy = false, onResend,
                     </td>
                     <td className="px-4 py-2.5">
                       <StatusBadge status={r.status} />
+                      {r.status === 'sent' && r.outbox && <p className="mt-1 text-[11px] text-amber-700">Saved to local dev outbox</p>}
+                      {r.inviteLink && <p className="mt-1 flex items-center gap-1 text-[11px] text-primary"><span>Local exam link</span><CopyButton value={r.inviteLink} label={`${r.name}'s local exam link`} /></p>}
                       {r.status === 'failed' && r.error && <p className="mt-1 max-w-[12rem] truncate text-[11px] text-danger" title={r.error}>{r.error}</p>}
                       {r.invite && <p className={`mt-1 text-[11px] ${LINK_LABEL[r.invite.status][1]}`}>{LINK_LABEL[r.invite.status][0]}{r.invite.deviceBound ? ' · device locked' : ''}</p>}
                     </td>

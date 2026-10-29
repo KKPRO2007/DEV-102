@@ -32,8 +32,14 @@ function layout(title: string, bodyHtml: string): string {
 </table></td></tr></table></body></html>`;
 }
 
+const linkify = (text: string) => text.replace(/https?:\/\/[^\s<]+/g, (raw) => {
+  const trailing = raw.match(/[),.!?:;]+$/)?.[0] ?? '';
+  const url = trailing ? raw.slice(0, -trailing.length) : raw;
+  return `<a href="${url}" style="color:#1d4ed8">${url}</a>${trailing}`;
+});
+
 const textToHtml = (text: string) =>
-  esc(text)
+  linkify(esc(text))
     .split(/\n{2,}/)
     .map((p) => `<p style="margin:0 0 14px">${p.replace(/\n/g, '<br>')}</p>`)
     .join('');
@@ -62,7 +68,7 @@ Password: ${password}
 The link works on one computer only and expires when the exam ends.`,
       html: layout(`Copy: link sent to ${cand.name}`, `<p>Hello ${esc(name)},</p><p>${esc(why)}. <b>${esc(cand.name)}</b> (${esc(cand.email)}) was sent these details for <b>${esc(examTitle)}</b> (${esc(examCode)}), starting ${esc(startTime)}.</p>
 <p style="margin:14px 0 4px;color:#475569">Candidate ID</p><div style="font-family:Consolas,monospace;font-size:15px">${esc(cand.userId)}</div>
-<p style="margin:14px 0 4px;color:#475569">Exam link</p><div style="font-family:Consolas,monospace;font-size:13px;word-break:break-all;background:#eff6ff;border-radius:12px;padding:14px;color:#1d4ed8">${esc(link)}</div>
+<p style="margin:14px 0 4px;color:#475569">Exam link</p><div style="font-family:Consolas,monospace;font-size:13px;word-break:break-all;background:#eff6ff;border-radius:12px;padding:14px"><a href="${esc(link)}" style="color:#1d4ed8">${esc(link)}</a></div>
 <p style="margin:14px 0 4px;color:#475569">Password</p><div style="font-family:Consolas,monospace;font-size:15px">${esc(password)}</div>
 <p style="color:#475569;margin-top:16px">The link works on one computer only and expires when the exam ends. Keep this email private.</p>`),
     };
@@ -81,7 +87,7 @@ ${pw}
 Install the Smart Proctor app from ${appLink}, paste the link, enter the password, then complete face and email verification. The link works on one computer only and expires when the exam ends.`,
       html: layout('Your proctor invitation', `<p>Hello ${esc(name)},</p><p>You have been assigned as a proctor for <b>${esc(examTitle)}</b> (${esc(examCode)}), starting ${esc(startTime)}.</p>
 <p style="margin:18px 0 6px;color:#475569">Your proctor link</p>
-<div style="font-family:Consolas,monospace;font-size:13px;word-break:break-all;background:#eff6ff;border-radius:12px;padding:14px;color:#1d4ed8">${esc(link)}</div>
+<div style="font-family:Consolas,monospace;font-size:13px;word-break:break-all;background:#eff6ff;border-radius:12px;padding:14px"><a href="${esc(link)}" style="color:#1d4ed8">${esc(link)}</a></div>
 <p style="margin-top:14px">${password ? `Temporary password: <b style="font-family:Consolas,monospace">${esc(password)}</b>` : 'Password: the one you already use for your proctor account.'}</p>
 <p>Install the <a href="${esc(appLink)}">Smart Proctor app</a>, paste the link, enter the password, then complete face and email verification.</p>
 <p style="color:#475569">The link works on one computer only and expires when the exam ends.</p>`),
@@ -114,6 +120,12 @@ export async function sendMail(m: MailInput): Promise<{ ok: boolean; error?: str
   });
   const t = getTransport();
   if (!t) {
+    if (config.isProd) {
+      const error = 'SMTP is not configured; real email delivery is unavailable.';
+      await prisma.emailLog.update({ where: { id: log.id }, data: { status: 'FAILED', attempts: 0, error } });
+      logger.error({ to: m.to, kind: m.kind }, error);
+      return { ok: false, error };
+    }
     // OTP bodies are not stored, even in the outbox, to keep codes out of the database.
     await prisma.emailLog.update({ where: { id: log.id }, data: { status: 'SENT', attempts: 1, html: m.kind === 'otp' ? null : m.html } });
     logger.info({ to: m.to, kind: m.kind }, 'email written to dev outbox (SMTP not configured)');
@@ -122,7 +134,7 @@ export async function sendMail(m: MailInput): Promise<{ ok: boolean; error?: str
   let lastError = '';
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      await t.sendMail({ from: config.MAIL_FROM, to: m.to, subject: m.subject, html: m.html, text: m.text });
+      await t.sendMail({ from: config.MAIL_FROM || config.SMTP_USER, to: m.to, subject: m.subject, html: m.html, text: m.text });
       await prisma.emailLog.update({ where: { id: log.id }, data: { status: 'SENT', attempts: attempt } });
       return { ok: true };
     } catch (err) {

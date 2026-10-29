@@ -19,7 +19,8 @@ const schema = z.object({
   SMTP_PORT: z.coerce.number().int().default(587),
   SMTP_USER: z.string().default(''),
   SMTP_PASS: z.string().default(''),
-  MAIL_FROM: z.string().default('Where U Elevate Exams <no-reply@whereuelevate.com>'),
+  // Gmail rejects an unverified From address. When unset, send from SMTP_USER.
+  MAIL_FROM: z.string().default(''),
   EVIDENCE_DIR: z.string().default('.data/evidence'),
   RETENTION_DAYS: z.coerce.number().int().positive().default(30),
   OTP_TTL_MIN: z.coerce.number().int().positive().default(5),
@@ -45,8 +46,17 @@ if (env.NODE_ENV === 'production' && ['change_me', 'dev-agent-key'].some((weak) 
 export const config = {
   ...env,
   isProd: env.NODE_ENV === 'production',
-  clientOrigins: env.CLIENT_URL.split(',').map((s) => s.trim()).filter(Boolean),
+  clientOrigins: env.CLIENT_URL.split(',').map((s) => s.trim().replace(/\/+$/, '')).filter(Boolean),
   extensionOrigins: env.EXTENSION_IDS.split(',').map((s) => s.trim()).filter(Boolean).map((id) => `chrome-extension://${id}`),
   evidenceDir: resolve(ROOT_DIR, env.EVIDENCE_DIR),
   smtpEnabled: Boolean(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS),
 };
+
+for (const origin of config.clientOrigins) {
+  try {
+    const url = new URL(origin);
+    if (!['http:', 'https:'].includes(url.protocol)) throw new Error('unsupported protocol');
+  } catch {
+    throw new Error(`CLIENT_URL must contain valid http(s) URL(s): ${origin}`);
+  }
+}

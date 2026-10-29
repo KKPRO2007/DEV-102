@@ -38,7 +38,7 @@ async function sendProctorInvite(inviteExamId: string, user: { id: string; name:
   const sent = await sendMail({ to: user.email, ...templates.proctorInvite(user.name, exam.title, exam.code, start, link, password, config.APP_DOWNLOAD_URL), kind: 'proctor_invite' });
   if (!sent.ok) fail('SERVER', `The invite email could not be sent: ${sent.error ?? 'unknown error'}`);
   // Development only: with no SMTP configured the link is returned so the flow can be tested locally.
-  return { inviteId: id, ...(sent.outbox && !config.isProd ? { devLink: link } : {}) };
+  return { inviteId: id, ...(!config.isProd ? { devLink: link } : {}), outbox: sent.outbox ?? false };
 }
 
 /** Hash for sign-in plus an encrypted copy the admin can reveal until the first sign-in (same as candidates). */
@@ -58,16 +58,34 @@ invitesRouter.get('/exams/:id/proctors', ...adminOnly, handle(async (req) => {
   return [...latest.values()].map(toProctorRow);
 }));
 
+invitesRouter.get('/exams/:id/proctors/lookup', ...adminOnly, handle(async (req) => {
+  const { email } = parse(z.object({ email: z.string().trim().toLowerCase().email().max(200) }), req.query);
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true, email: true, name: true, role: true, deletedAt: true } });
+  if (!user) return { profile: null, alreadyInvited: false, emailUnavailable: false };
+  if (user.deletedAt || user.role !== 'MENTOR') return { profile: null, alreadyInvited: false, emailUnavailable: true };
+  const activeInvite = await prisma.invite.findFirst({ where: { examId: String(req.params.id), role: 'MENTOR', userId: user.id, revokedAt: null } });
+  return { profile: { name: user.name, email: user.email }, alreadyInvited: Boolean(activeInvite), emailUnavailable: false };
+}));
+
 /** Invites a proctor by email. A mentor account is created when none exists and its temporary password goes in the same email. */
 invitesRouter.post('/exams/:id/proctors', ...adminOnly, handle(async (req) => {
   const body = parse(z.object({ name: z.string().trim().min(2).max(120), email: z.string().trim().toLowerCase().email().max(200) }), req.body);
   const examId = String(req.params.id);
   let user = await prisma.user.findUnique({ where: { email: body.email } });
   if (user && (user.deletedAt || user.role !== 'MENTOR')) fail('CONFLICT', 'This email belongs to an account that cannot proctor. Use a different email.');
+  if (user && await prisma.invite.findFirst({ where: { examId, role: 'MENTOR', userId: user.id, revokedAt: null } })) {
+    fail('CONFLICT', 'This proctor already has an active invitation for this exam.');
+  }
   let password: string | null = null;
   if (!user) {
-    password = randomPassword();
-    user = await prisma.user.create({ data: { email: body.email, name: body.name, role: 'MENTOR', ...(await credentials(password)) } });
+    const temporaryPassword = randomPassword();
+    password = temporaryPassword;
+    user = await prisma.user.create({ data: { email: body.email, name: body.name, role: 'MENTOR', ...(await credentials(temporaryPassword)) } });
+  } else if (!user.lastLoginAt) {
+    const storedPassword = user.credentialCipher ? decrypt(user.credentialCipher, config.JWT_SECRET) : null;
+    const temporaryPassword = storedPassword ?? randomPassword();
+    password = temporaryPassword;
+    if (!storedPassword) await prisma.user.update({ where: { id: user.id }, data: { ...(await credentials(temporaryPassword)), tokenVersion: { increment: 1 } } });
   }
   const r = await sendProctorInvite(examId, user, password);
   audit(req, 'proctor.invite', examId, { userId: user.id, created: password !== null });
