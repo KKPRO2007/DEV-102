@@ -1,5 +1,8 @@
 /**
- * Seeds the database with the same dataset the web UI used in mock mode, so every screen looks
+ * Default: live testing data only (one organization account and one real exam; seed-live.ts).
+ * `--demo`: the full demo dataset below, which the smoke test uses.
+ *
+ * The demo dataset is the same one the web UI used in mock mode, so every screen looks
  * identical after wiring: 6 exams, 120 questions, 60 candidates, 30 sessions, 150 violations and
  * browsing logs with AI sites. Adds staff accounts, demo candidates, scored answers, evidence
  * images and risk history. Safe to re-run: it wipes and recreates everything.
@@ -14,6 +17,7 @@ import {
 } from './seed-data';
 import { encrypt, hashPassword } from '../../apps/api/src/lib/crypto';
 import { DEFAULT_POLICY, VIOLATION_META, defaultExtras, readExtras, scoreAnswers } from '../../apps/api/src/lib/domain';
+import { seedLive } from './seed-live';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 loadDotenv({ path: join(ROOT, '.env') });
@@ -295,7 +299,12 @@ async function refreshDemo(): Promise<void> {
   console.log(`[seed] ${exam.code} had closed for new starts; its window now runs until ${endsAt.toLocaleTimeString()}.`);
 }
 
-(process.argv.includes('--refresh-demo') ? refreshDemo() : main())
+async function live(): Promise<void> {
+  await wipe();
+  await seedLive(prisma);
+}
+
+(process.argv.includes('--refresh-demo') ? refreshDemo() : process.argv.includes('--demo') ? main() : live())
   .catch((error: unknown) => {
     console.error('Database seed failed:', error);
     process.exitCode = 1;

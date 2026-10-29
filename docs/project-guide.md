@@ -193,3 +193,33 @@ Outside production the one-time code also shows on the identity-check screen (an
 The AI webcam checks, browsing logs and dev-panel violation injection still work for demos. The installed app and `PROCTOR_STRICT=1` keep every restriction.
 
 The desktop app opens full screen. In developer mode the password step has **Copy** and **Fill** buttons for the pasted link's test password, and the dev panel keeps the last generated link and password with copy buttons. The website's dev toolbar has no on-screen button; open it with Ctrl+Shift+D. Without SMTP, every email (with its join link) is in the website dev toolbar's outbox.
+
+## Two-laptop live test (no deployment)
+
+Your laptop is the server; a friend takes the exam on their own laptop. The default seed is real data only: the organization login (`admin@wue.in` / `Admin@123`, or `ORG_ADMIN_EMAIL` / `ORG_ADMIN_PASSWORD` in `.env`) and one exam, **LIVE-01**, with 20 real questions, open for 30 days.
+
+LIVE-01 has these exam settings on, and organizations can turn them on for any exam under Settings:
+
+- **Proctor-only alerts:** the candidate sees no warnings and the exam is never ended automatically. Every violation goes to the proctor with its reason and evidence.
+- **One-way questions:** no going back after Next.
+- **Same order for everyone:** shuffle is off.
+- **Live microphone:** proctors watching the screen can also listen, and the consent screen says so.
+
+1. On your laptop: `node scripts/start.mjs --reseed` (the first time; afterwards `npm start`).
+2. Give your friend the installer from `apps/desktop/release` (build it with `npm run build -w apps/desktop`).
+3. Connect:
+   - **Same Wi-Fi:** `npm run share` prints your laptop's address, for example `172.16.x.x`. On the friend's laptop press **Change** next to *Exam server* on the sign-in screen and type it.
+   - **Over the internet:** install cloudflared once (`winget install --id Cloudflare.cloudflared`), then `npm run share:tunnel`, and give your friend the printed `https://….trycloudflare.com` address.
+4. Website, Organization panel > LIVE-01 > Credentials:
+   - add your friend as a candidate and send the email; the join link and password are also under **Reveal & copy**
+   - invite yourself under **Proctors**
+5. Your friend pastes the link, enters the password, and passes the system check, face and OTP, then consent.
+6. You open the Proctor console on the website or desktop and pick the session. You see:
+   - his webcam about once a second
+   - **Watch screen** to see his screen live, then **Listen** to hear him
+   - every site and AI tool he opens and the text he types or pastes, the moment it happens
+   - each violation with its evidence
+
+The webcam is checked every second. A phone or a second person is flagged on the first frame it appears in, and looking away or leaving the camera after 2 seconds. Thresholds are in `backend-services/config.py`.
+
+`npm run smoke` needs the demo dataset: `npm run db:seed:demo` first.

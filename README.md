@@ -73,13 +73,16 @@ bcrypt (cost 12) passwords; lockout after 5 failures; OTPs HMAC-hashed with a 5-
 | Command | What it does |
 | --- | --- |
 | `npm start` | Everything (database, API, agent, web, desktop) |
-| `npm run smoke` | End-to-end API test of the admin, candidate and mentor flows (needs the API running) |
+| `npm run smoke` | End-to-end API test of the admin, candidate and mentor flows (needs the API running and the demo data: `npm run db:seed:demo`) |
+| `npm run share` | Prints this laptop's Wi-Fi address for a candidate's app on another laptop |
+| `npm run share:tunnel` | Same over the internet through a free Cloudflare quick tunnel (needs `cloudflared`) |
+| `npm run db:seed:demo` | Full demo dataset instead of the default live-test data |
 | `npm test` | Unit tests (Vitest) for the violation policy, OTP expiry and account lockout. No database needed |
 | `npm run test:agent` | Python tests (pytest) for the AI agent's phone and notes rules; installs pytest on first run |
 | `npm run lint` | ESLint for the API, website and desktop app |
 | `npm run typecheck` | Type-checks every workspace |
 | `npm run db` | Only the embedded PostgreSQL server |
-| `npm run db:seed` | Reseed demo data |
+| `npm run db:seed` | Reset to live-test data (organization login + LIVE-01) |
 | `npm run db:studio` | Browse the database |
 | `npm run build -w apps/desktop` | Windows installer in `apps/desktop/release` |
 
