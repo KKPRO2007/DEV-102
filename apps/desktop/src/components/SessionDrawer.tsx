@@ -190,6 +190,7 @@ const SCREEN_MESSAGE: Record<ScreenState, string> = {
 function LiveScreen({ sessionId, candidateName }: { sessionId: string; candidateName: string }) {
   const [watching, setWatching] = useState(false)
   const [state, setState] = useState<ScreenState>('connecting')
+  const [listening, setListening] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
 
   useEffect(() => {
@@ -219,6 +220,7 @@ function LiveScreen({ sessionId, candidateName }: { sessionId: string; candidate
           {state === 'live' && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" aria-hidden="true" />}
           Screen · {SCREEN_MESSAGE[state]}
         </span>
+<button onClick={() => { const v = videoRef.current; if (v) { v.muted = !v.muted; setListening(!v.muted) } }} aria-pressed={listening} className="rounded-md px-2 py-1 font-semibold hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">{listening ? 'Mute' : 'Listen'}</button>
         <button onClick={() => setWatching(false)} aria-label="Stop watching the screen" className="rounded-md p-1 hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"><X className="h-4 w-4" aria-hidden="true" /></button>
       </div>
       <video ref={videoRef} autoPlay muted playsInline aria-label={`Live screen of ${candidateName}`} className={`aspect-video w-full bg-black object-contain ${state === 'live' ? '' : 'hidden'}`} />

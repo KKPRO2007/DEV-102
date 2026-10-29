@@ -164,7 +164,7 @@ let socket: Socket | null = null;
 /** Stops every live channel: socket, heartbeat, webcam/screen uploads, audio checks and activity logging. */
 export type StopLive = () => void;
 
-export function startLive(sessionId: string, h: LiveHandlers, opts: { audioMonitoring?: boolean } = {}): StopLive {
+export function startLive(sessionId: string, h: LiveHandlers, opts: { audioMonitoring?: boolean; liveAudio?: boolean } = {}): StopLive {
   const stops: (() => void)[] = [];
 
   socket = io(`${API_ORIGIN}/monitor`, { path: '/socket.io', auth: { token: getToken() }, transports: ['websocket'], reconnectionDelayMax: 5000 });
@@ -176,7 +176,7 @@ export function startLive(sessionId: string, h: LiveHandlers, opts: { audioMonit
   socket.on('session:terminate', (p: { reason: string }) => h.onEnded({ reason: `Terminated by the invigilator: ${p.reason}`, status: 'TERMINATED' }));
   socket.on('session:kicked', (p: { reason: string }) => h.onKicked(p.reason));
   socket.on('session:reinstated', () => h.onReinstated());
-  stops.push(shareScreenOnRequest(socket, sessionId));
+  stops.push(shareScreenOnRequest(socket, sessionId, Boolean(opts.liveAudio)));
   stops.push(() => {
     socket?.disconnect();
     socket = null;
@@ -224,13 +224,18 @@ const ICE_SERVERS: RTCIceServer[] = [{ urls: 'stun:stun.l.google.com:19302' }];
 type RtcMessage = { sessionId: string; from?: string; payload?: { type?: string; sdp?: string; candidate?: string } & RTCIceCandidateInit };
 export type ScreenState = 'connecting' | 'live' | 'unavailable' | 'ended';
 
-/** Candidate side: answers each mentor's offer with the entire-screen stream, one peer per mentor socket. */
-export function shareScreenOnRequest(s: Socket, sessionId: string): () => void {
+/**
+ * Candidate side: answers each proctor's offer with the entire-screen stream, one peer per proctor socket.
+ * With `withAudio` the microphone travels on the same peer, live only (nothing is recorded).
+ */
+export function shareScreenOnRequest(s: Socket, sessionId: string, withAudio = false): () => void {
   const peers = new Map<string, { pc: RTCPeerConnection; ready: Promise<void> }>();
   const close = (id: string) => {
     peers.get(id)?.pc.close();
     peers.delete(id);
   };
+  let mic: Promise<MediaStream | null> | null = null;
+  const microphone = () => (mic ??= navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: false } }).catch(() => null));
 
   s.on('rtc:offer', (m: RtcMessage) => {
     const from = m.from;
@@ -247,6 +252,7 @@ export function shareScreenOnRequest(s: Socket, sessionId: string): () => void {
     pc.onconnectionstatechange = () => { if (['failed', 'closed'].includes(pc.connectionState)) close(from); };
     const ready = (async () => {
       await pc.setRemoteDescription({ type: 'offer', sdp: m.payload?.sdp });
+      if (withAudio) (await microphone())?.getAudioTracks().forEach((t) => pc.addTrack(t, stream));
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       s.emit('rtc:answer', { sessionId, to: from, payload: { type: answer.type, sdp: answer.sdp } });
@@ -262,7 +268,10 @@ export function shareScreenOnRequest(s: Socket, sessionId: string): () => void {
     if (candidate?.candidate) void peer.ready.then(() => peer.pc.addIceCandidate(candidate)).catch(() => undefined);
   });
 
-  return () => [...peers.keys()].forEach(close);
+  return () => {
+    [...peers.keys()].forEach(close);
+    void mic?.then((m) => m?.getTracks().forEach((t) => t.stop()));
+  };
 }
 
 /** Mentor side: receive-only peer for one session's screen. The returned function hangs up. */
@@ -274,6 +283,7 @@ export function watchScreen(sessionId: string, onStream: (stream: MediaStream) =
   let stopped = false;
 
   pc.addTransceiver('video', { direction: 'recvonly' });
+  pc.addTransceiver('audio', { direction: 'recvonly' });
   pc.ontrack = (e) => {
     onStream(e.streams[0] ?? new MediaStream([e.track]));
     onState('live');
@@ -319,7 +329,7 @@ export interface MonitorHandlers {
   onConnection(connected: boolean): void;
 }
 
-const MONITOR_EVENTS = ['violation:new', 'violation:reviewed', 'session:status', 'session:progress', 'session:presence'] as const;
+const MONITOR_EVENTS = ['violation:new', 'violation:reviewed', 'session:status', 'session:progress', 'session:presence', 'browsing:new'] as const;
 
 /** Staff socket for one exam's room: pushes changes and webcam snapshots instead of polling. */
 export function watchExam(examId: string, h: MonitorHandlers): () => void {
@@ -380,21 +390,26 @@ function startFrameUploads(sessionId: string): () => void {
     if (e instanceof HttpError && e.code === 'NETWORK') void enqueueFrame(sessionId, kind, frame);
   };
 
-  // Offline, a smaller frame is kept every 4th webcam tick (~16 s) and every 3rd screen tick (60 s).
+  // The webcam is checked every second so a phone or a second person is caught within a second or two.
+  // Offline, a smaller frame is kept every 16th webcam tick (~16 s) and every 3rd screen tick (60 s).
   let camTick = 0;
+  let camBusy = false;
   const camTimer = window.setInterval(() => {
     attachPreviewCamera();
     camTick += 1;
     if (isOffline()) {
-      const kept = camTick % 4 === 0 ? grab(camVideo, 480, 0.6) : null;
+      const kept = camTick % 16 === 0 ? grab(camVideo, 480, 0.6) : null;
       if (kept) void enqueueFrame(sessionId, 'webcam', kept);
       return;
     }
     // The backlog goes first, so the agent sees frames in the order they were taken.
-    if (queue?.frames?.length) return;
+    // Skip a tick while the previous frame is still being analysed, so a slow network never piles up requests.
+    if (queue?.frames?.length || camBusy) return;
     const frame = grab(camVideo, 640, 0.72);
-    if (frame) void post('/proctoring/frames', { sessionId, image: frame }).catch(keepOnNetworkError('webcam', frame));
-  }, 4000);
+    if (!frame) return;
+    camBusy = true;
+    void post('/proctoring/frames', { sessionId, image: frame }).catch(keepOnNetworkError('webcam', frame)).finally(() => { camBusy = false; });
+  }, 1000);
   const backfill = window.setInterval(() => void sendNextFrame(), 1000);
 
   let screenTick = 0;

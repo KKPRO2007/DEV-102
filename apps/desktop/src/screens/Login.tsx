@@ -5,7 +5,7 @@ import {
   Lock, MailCheck, MonitorCheck, ShieldCheck, Video, Wifi, WifiOff, type LucideIcon,
 } from 'lucide-react'
 import { api, devApi, parseInviteToken, type InvitePreview } from '../lib/api'
-import { HttpError } from '../lib/http'
+import { API_ORIGIN, HttpError, setServer } from '../lib/http'
 import { useApp } from '../lib/store'
 import { backgroundFor, getTimeTheme, type Look, type TimeTheme } from '../lib/theme'
 
@@ -48,7 +48,7 @@ const errorText = (e: unknown, fallback: string) => (e instanceof Error ? e.mess
 
 export default function Login({ onLoggedIn }: LoginProps) {
   const [now, setNow] = useState(() => new Date())
-  const [server, setServer] = useState<{ online: boolean; latencyMs: number } | null>(null)
+  const [serverState, setServerState] = useState<{ online: boolean; latencyMs: number } | null>(null)
   const [link, setLink] = useState('')
   const [token, setToken] = useState<string | null>(null)
   const [invite, setInvite] = useState<InvitePreview | null>(null)
@@ -58,8 +58,26 @@ export default function Login({ onLoggedIn }: LoginProps) {
   const [error, setError] = useState<string | null>(null)
   const [bgFailed, setBgFailed] = useState(false)
   const [testCopied, setTestCopied] = useState(false)
+  const [server, setServerText] = useState(API_ORIGIN)
+  const [editingServer, setEditingServer] = useState(false)
+  const [serverDraft, setServerDraft] = useState('')
+  const [serverError, setServerError] = useState<string | null>(null)
 
-  const pingServer = useCallback(async () => setServer(await api.serverStatus()), [])
+  const pingServer = useCallback(async () => setServerState(await api.serverStatus()), [])
+
+  /** Points the app at the organization's server (same Wi-Fi address or tunnel link). */
+  const saveServer = () => {
+    const origin = setServer(serverDraft)
+    if (!origin) {
+      setServerError('Enter an address like 192.168.1.20 or https://name.trycloudflare.com')
+      return
+    }
+    setServerText(origin)
+    setEditingServer(false)
+    setServerError(null)
+    setServerState(null)
+    void pingServer()
+  }
 
   useEffect(() => {
     void pingServer()
@@ -157,7 +175,7 @@ export default function Login({ onLoggedIn }: LoginProps) {
   const time = getTimeTheme(now)
   const look: Look = !invite ? 'org' : invite.role === 'MENTOR' ? 'proctor' : 'student'
   const background = backgroundFor(look, time)
-  const offline = server?.online === false
+  const offline = serverState?.online === false
   const isProctor = invite?.role === 'MENTOR'
 
   useEffect(() => setBgFailed(false), [background])
@@ -232,10 +250,10 @@ export default function Login({ onLoggedIn }: LoginProps) {
               </span>
               <span
                 role="status"
-                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${server === null ? 'bg-soft text-muted' : offline ? 'bg-red-50 text-danger' : 'bg-green-50 text-success'}`}
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium ${serverState === null ? 'bg-soft text-muted' : offline ? 'bg-red-50 text-danger' : 'bg-green-50 text-success'}`}
               >
                 {offline ? <WifiOff className="h-3 w-3" aria-hidden /> : <Wifi className="h-3 w-3" aria-hidden />}
-                {server === null ? 'Checking…' : offline ? 'Server offline' : `Online · ${server.latencyMs} ms`}
+                {serverState === null ? 'Checking…' : offline ? 'Server offline' : `Online · ${serverState.latencyMs} ms`}
               </span>
             </div>
 
@@ -276,6 +294,33 @@ export default function Login({ onLoggedIn }: LoginProps) {
                   </button>
                   {offline && <button type="button" onClick={() => void pingServer()} className="mt-3 w-full text-center text-xs font-medium text-accent underline">Server unreachable. Retry connection</button>}
                   <p className="mt-6 text-center text-xs text-muted">No link? Only candidates and proctors invited by an organisation can join. Contact your exam coordinator.</p>
+                  {/* The organization's server: its address on the same Wi-Fi, or its tunnel link over the internet. */}
+                  <div className="mt-4 border-t border-border pt-3 text-xs text-muted">
+                    {!editingServer ? (
+                      <p className="flex items-center justify-center gap-2">
+                        <span>Exam server <span className="font-mono text-ink">{server.replace(/^https?:\/\//, '')}</span></span>
+                        <button type="button" onClick={() => { setServerDraft(server); setEditingServer(true) }} className="font-medium text-accent underline">Change</button>
+                      </p>
+                    ) : (
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex gap-1.5">
+                          <input
+                            value={serverDraft}
+                            onChange={(e) => { setServerDraft(e.target.value); setServerError(null) }}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveServer() } }}
+                            aria-label="Exam server address"
+                            placeholder="192.168.1.20 or https://….trycloudflare.com"
+                            spellCheck={false}
+                            className="min-w-0 flex-1 rounded-lg border border-border px-2.5 py-1.5 font-mono text-xs text-ink focus-visible:outline-2 focus-visible:outline-accent"
+                          />
+                          <button type="button" onClick={saveServer} className="rounded-lg bg-primary px-3 py-1.5 font-semibold text-white">Save</button>
+                          <button type="button" onClick={() => { setEditingServer(false); setServerError(null) }} className="rounded-lg px-2 py-1.5 font-medium">Cancel</button>
+                        </div>
+                        {serverError && <span className="text-danger">{serverError}</span>}
+                        <span>Leave empty and save to go back to this computer.</span>
+                      </div>
+                    )}
+                  </div>
                 </motion.form>
               ) : (
                 <motion.form key="password" onSubmit={(e) => void onPassword(e)} noValidate initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 12 }} aria-label="Enter password">

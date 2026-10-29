@@ -47,7 +47,8 @@ function useProctorBridge(active: boolean): void {
     if (!active) return undefined;
     const proctor = getProctor();
     const offViolation = proctor.events.onViolation((event) => {
-      if (event.code === 'WINDOW_BLUR') useApp.getState().setLock(event.message ?? 'The exam window lost focus.');
+      // Proctor-only exams show the candidate nothing; the event still reaches the proctor.
+      if (event.code === 'WINDOW_BLUR' && !useApp.getState().exam?.settings.proctorOnly) useApp.getState().setLock(event.message ?? 'The exam window lost focus.');
     });
     const offScreen = proctor.screen.onEnded(() => reportViolation('SCREEN_SHARE_STOPPED'));
     return () => {

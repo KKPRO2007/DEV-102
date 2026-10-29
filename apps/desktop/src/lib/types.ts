@@ -44,6 +44,12 @@ export interface Exam {
     maxWarnings: number;
     autoSubmit: boolean;
     audioMonitoring: boolean;
+    /** Violations only flag to the proctor: no candidate warnings, no automatic submit. */
+    proctorOnly?: boolean;
+    /** Questions are answered in order and cannot be revisited. */
+    oneWay?: boolean;
+    /** Microphone streamed live to proctors watching the screen (never recorded). */
+    liveAudio?: boolean;
   };
 }
 

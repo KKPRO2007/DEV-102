@@ -1,6 +1,52 @@
 /** Thin fetch client for the DEV102 API: bearer token, envelope unwrap, timeouts and typed errors. */
-export const API_ORIGIN = (import.meta.env.VITE_API_URL ?? 'http://localhost:4000').replace(/\/$/, '');
-const BASE = `${API_ORIGIN}/api/v1`;
+const SERVER_KEY = 'dev102.server';
+const BUILT_IN = (import.meta.env.VITE_API_URL ?? 'http://localhost:4000').replace(/\/$/, '');
+
+/** Turns "192.168.1.20", "192.168.1.20:4000" or a full URL into an origin such as http://192.168.1.20:4000. */
+export function normalizeServer(input: string): string | null {
+  const raw = input.trim().replace(/\/+$/, '');
+  if (!raw) return null;
+  const withScheme = /^https?:\/\//i.test(raw) ? raw : `http://${raw}`;
+  try {
+    const u = new URL(withScheme);
+    if (u.pathname !== '/' || u.search || u.hash || u.username) return null;
+    // A bare address runs the API on its default port.
+    if (!/^https?:\/\//i.test(raw) && !u.port) u.port = '4000';
+    return u.origin;
+  } catch {
+    return null;
+  }
+}
+
+function savedServer(): string | null {
+  try {
+    return normalizeServer(localStorage.getItem(SERVER_KEY) ?? '');
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The exam server this app talks to: the one chosen on the sign-in screen (for example the
+ * organization's laptop on the same Wi-Fi, or its tunnel address), else the build default.
+ * A live binding, so every module sees a change.
+ */
+export let API_ORIGIN = savedServer() ?? BUILT_IN;
+const base = () => `${API_ORIGIN}/api/v1`;
+
+/** Saves the exam server; returns the normalised origin, or null if the address is not valid. */
+export function setServer(input: string): string | null {
+  const origin = input.trim() ? normalizeServer(input) : BUILT_IN;
+  if (!origin) return null;
+  API_ORIGIN = origin;
+  try {
+    if (origin === BUILT_IN) localStorage.removeItem(SERVER_KEY);
+    else localStorage.setItem(SERVER_KEY, origin);
+  } catch {
+    /* storage unavailable: the choice lasts for this run */
+  }
+  return origin;
+}
 
 export type HttpErrorCode = 'NETWORK' | 'AUTH' | 'FORBIDDEN' | 'VALIDATION' | 'NOT_FOUND' | 'CONFLICT' | 'LOCKED' | 'RATE_LIMITED' | 'SERVER';
 
@@ -31,7 +77,7 @@ export async function http<T>(method: string, path: string, body?: unknown, opts
   const timer = window.setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 15_000);
   let res: Response;
   try {
-    res = await fetch(`${BASE}${path}`, {
+    res = await fetch(`${base()}${path}`, {
       method,
       signal: ctrl.signal,
       headers: { ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
@@ -67,7 +113,7 @@ export async function measureNetwork(onProgress?: (mbps: number, pct: number) =>
   }
   const latencyMs = Math.round(Math.min(...pings));
   const t0 = performance.now();
-  const res = await fetch(`${BASE}/net/speed?bytes=1500000&r=${Math.random()}`, { cache: 'no-store' });
+  const res = await fetch(`${base()}/net/speed?bytes=1500000&r=${Math.random()}`, { cache: 'no-store' });
   const reader = res.body?.getReader();
   let received = 0;
   if (reader) {

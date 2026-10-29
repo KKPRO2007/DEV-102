@@ -51,6 +51,7 @@ function validate(stream: MediaStream, declaredScreen: boolean): Check[] {
 
 export default function ScreenShareConsent({ onGranted, onBack, notify }: ScreenShareConsentProps) {
   const audioMonitoring = useApp((s) => s.exam?.settings.audioMonitoring ?? false)
+  const liveAudio = useApp((s) => Boolean(s.exam?.settings.liveAudio))
   const [agreed, setAgreed] = useState(false)
   const [stage, setStage] = useState<Stage>('consent')
   const [sources, setSources] = useState<ScreenSource[] | null>(null)
@@ -159,7 +160,7 @@ export default function ScreenShareConsent({ onGranted, onBack, notify }: Screen
         {stage === 'consent' && (
           <motion.div key="consent" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
             <div className="grid gap-6 lg:grid-cols-2">
-              <ConsentList title="What is monitored" tone="monitored" items={monitoredItems(audioMonitoring)} />
+              <ConsentList title="What is monitored" tone="monitored" items={monitoredItems(audioMonitoring, liveAudio)} />
               <ConsentList title="What is not monitored" tone="private" items={NOT_MONITORED_ITEMS} />
             </div>
             <div className="mt-6 rounded-2xl border border-border bg-white p-5 shadow-sm">

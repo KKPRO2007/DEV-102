@@ -18,6 +18,7 @@ function fieldText(el: Element | null): string {
 }
 
 function send(text: string, trigger: 'submit' | 'pause'): void {
+  if (timer) clearTimeout(timer);
   const value = text.replace(/\s+/g, ' ').trim().slice(0, 2000);
   if (value.length < MIN_LEN || value === lastSent) return;
   lastSent = value;
@@ -40,7 +41,18 @@ document.addEventListener(
   () => {
     if (timer) clearTimeout(timer);
     const el = document.activeElement;
-    timer = setTimeout(() => send(fieldText(el), 'pause'), 2500);
+    // A short pause is enough: the proctor sees typing almost as it happens.
+    timer = setTimeout(() => send(fieldText(el), 'pause'), 800);
+  },
+  true,
+);
+
+// Pasted text (for example a copied exam question) is reported straight away.
+document.addEventListener(
+  'paste',
+  () => {
+    const el = document.activeElement;
+    setTimeout(() => send(fieldText(el), 'pause'), 50);
   },
   true,
 );

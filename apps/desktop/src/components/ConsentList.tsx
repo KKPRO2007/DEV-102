@@ -24,8 +24,12 @@ export const MONITORED_ITEMS: ConsentItem[] = [
 /** Replaces the system-check microphone item when the exam turns on audio monitoring. */
 const AUDIO_ITEM: ConsentItem = { id: 'mic', title: 'Voice and microphone checks (not recordings)', summary: 'Talking and a muted microphone are flagged during the exam.', detail: 'While the exam runs, your computer measures sound levels to notice sustained talking and to confirm the microphone stays on. This happens on your computer: no audio is recorded, stored or sent. Only the event, such as "voice detected", is reported, and a proctor reviews it before any penalty is final.', Icon: Mic }
 
-export const monitoredItems = (audioMonitoring: boolean): ConsentItem[] =>
-  audioMonitoring ? MONITORED_ITEMS.map((item) => (item.id === 'mic' ? AUDIO_ITEM : item)) : MONITORED_ITEMS
+/** Replaces the microphone item when the exam streams the microphone live to the proctor. */
+const LIVE_AUDIO_ITEM: ConsentItem = { id: 'mic', title: 'Live microphone to your proctor', summary: 'Your proctor can listen to your microphone during the exam.', detail: 'While the exam runs, your proctor can listen live to your microphone, together with your screen. It is streamed only while they are watching and is not recorded or stored. Sound levels are also checked on your computer to notice sustained talking.', Icon: Mic }
+
+export const monitoredItems = (audioMonitoring: boolean, liveAudio = false): ConsentItem[] =>
+  liveAudio ? MONITORED_ITEMS.map((item) => (item.id === 'mic' ? LIVE_AUDIO_ITEM : item))
+    : audioMonitoring ? MONITORED_ITEMS.map((item) => (item.id === 'mic' ? AUDIO_ITEM : item)) : MONITORED_ITEMS
 
 export const NOT_MONITORED_ITEMS: ConsentItem[] = [
   { id: 'files', title: 'Your files and documents', summary: 'Nothing on your disk is read or uploaded.', detail: 'The app does not scan, copy or upload your personal files, photos or downloads. It only sees what appears on your shared screen.', Icon: FileText },

@@ -118,6 +118,8 @@ interface ExamState {
   warnings: number
   events: ViolationEvent[]
   log: BrowsingLog[]
+  /** One-way exams only move forward, one question at a time. */
+  oneWay: boolean
   init: (paper: ExamPaper, seed: string) => void
   choose: (qid: string, optionId: string, multi: boolean) => void
   type: (qid: string, raw: string) => void
@@ -138,6 +140,7 @@ const useExamStore = create<ExamState>()((set) => ({
   warnings: 0,
   events: [],
   log: [],
+  oneWay: false,
   init: (paper, seed) =>
     set({
       questions: orderQuestions(paper.questions, paper.exam.settings.shuffle, seed),
@@ -151,6 +154,7 @@ const useExamStore = create<ExamState>()((set) => ({
       warnings: paper.warningsUsed,
       events: [],
       log: [],
+      oneWay: Boolean(paper.exam.settings.oneWay),
     }),
   choose: (qid, optionId, multi) =>
     set((s) => {
@@ -161,7 +165,11 @@ const useExamStore = create<ExamState>()((set) => ({
   type: (qid, raw) => set((s) => ({ numeric: { ...s.numeric, [qid]: raw.slice(0, 32) }, rev: s.rev + 1 })),
   clear: (qid) => set((s) => ({ answers: { ...s.answers, [qid]: [] }, numeric: { ...s.numeric, [qid]: '' }, rev: s.rev + 1 })),
   toggleFlag: (qid) => set((s) => ({ flagged: { ...s.flagged, [qid]: !s.flagged[qid] }, rev: s.rev + 1 })),
-  go: (i) => set((s) => ({ index: Math.min(Math.max(i, 0), Math.max(0, s.questions.length - 1)) })),
+  go: (i) =>
+    set((s) => {
+      if (s.oneWay && i !== s.index + 1) return {}
+      return { index: Math.min(Math.max(i, 0), Math.max(0, s.questions.length - 1)) }
+    }),
 }))
 
 /* ───────────────────────── screen ───────────────────────── */
@@ -208,6 +216,7 @@ export default function Exam({ examId, userId, onSubmitted }: ExamProps) {
   const numeric = useExamStore((s) => s.numeric)
   const flagged = useExamStore((s) => s.flagged)
   const index = useExamStore((s) => s.index)
+  const oneWay = useExamStore((s) => s.oneWay)
   const rev = useExamStore((s) => s.rev)
   const endsAt = useExamStore((s) => s.endsAt)
   const save = useExamStore((s) => s.save)
@@ -268,8 +277,10 @@ export default function Exam({ examId, userId, onSubmitted }: ExamProps) {
       const prev = useExamStore.getState()
       useExamStore.setState({ events: [{ id: uid(), code, severity, message, at }, ...prev.events].slice(0, 30) })
 
+      // Proctor-only exams tell the candidate nothing; the event still goes to the proctor below.
+      const silent = Boolean(p.exam.settings.proctorOnly)
       const faceState = FACE_MAP[code]
-      if (faceState) {
+      if (faceState && !silent) {
         setFace(faceState)
         window.clearTimeout(faceTimer.current)
         faceTimer.current = window.setTimeout(() => setFace('OK'), 6000)
@@ -297,7 +308,11 @@ export default function Exam({ examId, userId, onSubmitted }: ExamProps) {
           setActiveWarning((cur) => (cur?.kind === 'submit' ? cur : { id: uid(), code, severity, message, kind, warningNumber: r.warnings }))
         } else if (r.outcome !== 'SUPPRESSED') pushToast(`Noted: ${message}`, 'info')
       }
-      void api.reportViolation({ examId: p.exam.id, sessionId: p.sessionId, code, severity, message, at }).then((r) => (r ? applyServer(r) : applyLocal()))
+      void api.reportViolation({ examId: p.exam.id, sessionId: p.sessionId, code, severity, message, at }).then((r) => {
+        if (silent) return
+        if (r) applyServer(r)
+        else applyLocal()
+      })
     },
     [pushToast],
   )
@@ -420,7 +435,7 @@ export default function Exam({ examId, userId, onSubmitted }: ExamProps) {
         pushToast('An invigilator reviewed the flag and reinstated your session.', 'ok')
       },
       onServerReachable: setServerReachable,
-    }, { audioMonitoring: paper.exam.settings.audioMonitoring })
+    }, { audioMonitoring: paper.exam.settings.audioMonitoring, liveAudio: Boolean(paper.exam.settings.liveAudio) })
     const onSimulate = (e: Event) => report((e as CustomEvent<{ code: ViolationCode }>).detail.code)
     window.addEventListener('proctor:report', onSimulate)
     return () => {
@@ -656,7 +671,7 @@ export default function Exam({ examId, userId, onSubmitted }: ExamProps) {
                 </div>
 
                 <div className="flex items-center justify-between gap-3 border-t border-border px-6 py-3">
-                  <button type="button" onClick={() => go(index - 1)} disabled={index === 0} className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-primary hover:bg-soft focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-40">
+                  <button type="button" onClick={() => go(index - 1)} disabled={index === 0} hidden={oneWay} className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-primary hover:bg-soft focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-40">
                     <ArrowLeft className="h-4 w-4" aria-hidden /> Previous
                   </button>
                   <button type="button" onClick={() => clear(q.id)} disabled={isNumeric(q) ? !(numeric[q.id] ?? '') : selected.length === 0} className="inline-flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-muted hover:bg-soft focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-40">
@@ -690,8 +705,9 @@ export default function Exam({ examId, userId, onSubmitted }: ExamProps) {
         </section>
 
         <aside className="flex min-h-0 flex-col gap-4 overflow-y-auto">
-          <QuestionPalette items={items} currentId={q?.id ?? ''} onSelect={(id) => { setView('exam'); go(questions.findIndex((x) => x.id === id)) }} />
+          {!oneWay && <QuestionPalette items={items} currentId={q?.id ?? ''} onSelect={(id) => { setView('exam'); go(questions.findIndex((x) => x.id === id)) }} />}
 
+          {!exam.settings.proctorOnly && (
           <section className="rounded-2xl border border-border bg-white p-4 shadow-sm" aria-label="Session integrity">
             <div className="flex items-center justify-between">
               <h2 className="font-heading text-sm font-semibold">Session integrity</h2>
@@ -714,6 +730,7 @@ export default function Exam({ examId, userId, onSubmitted }: ExamProps) {
               ))}
             </ul>
           </section>
+          )}
         </aside>
       </div>
 
