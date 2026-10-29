@@ -37,7 +37,8 @@ On first run `npm start` creates `.env` with fresh secrets, starts an embedded P
 | --- | --- | --- |
 | Admin | website `/login` → Administrator | `admin@wue.in` / `Admin@123` |
 | Mentor | website `/login` → Mentor | `mentor@wue.in` / `Mentor@123` |
-| Candidate | desktop app | Exam ID `CPA-26`, User ID `WUE26DEMO`, password `Demo@2026` |
+| Candidate | desktop app | Paste a join link (dev panel Ctrl+Shift+D → **Candidate link**), password `Demo@2026` |
+| Proctor | desktop app | Paste a join link (dev panel → **Proctor link**), password `Mentor@123`, then face + OTP |
 
 All other seeded candidates use `Exam@` plus the last four digits of their User ID. The OTP email goes to the dev outbox when SMTP is not configured, and the desktop app shows the code during development.
 
@@ -47,7 +48,7 @@ Press **Ctrl+Shift+D** (or click the **DEV** pill) in the website to see service
 
 ## Candidate flow
 
-Credentials email → desktop sign-in (lockout after 5 failures, device binding) → system check (camera, microphone, measured network speed, 60+ blacklisted apps, displays and mirroring, VM and remote desktop) → face verification (first capture registers the reference photo) and email OTP → consent screen → entire-screen share → kiosk exam with server-synced timer, autosave and sandbox tabs → warnings → auto-submit on repeated or critical violations → receipt.
+Email with a personal join link and password → paste the link in the desktop app, enter the password (lockout after 5 failures; the link locks to that computer and expires when the exam ends) → system check (camera, microphone, measured network speed, 60+ blacklisted apps, displays and mirroring, VM and remote desktop) → face verification (first capture registers the reference photo) and email OTP → consent screen → entire-screen share → kiosk exam with server-synced timer, autosave and sandbox tabs → warnings → auto-submit on repeated or critical violations → receipt.
 
 During the exam:
 
@@ -93,4 +94,14 @@ A desktop proctor cannot see everything: a second phone held out of camera view,
 
 
 
-See [`docs/architecture.md`](docs/architecture.md) and [`docs/database.md`](docs/database.md).
+## Documentation
+
+| Doc | For |
+| --- | --- |
+| [`docs/project-guide.md`](docs/project-guide.md) | How the whole system works, every flow, and the honest limits |
+| [`docs/hackathon.md`](docs/hackathon.md) | Rules, rubric mapping, PS coverage, test evidence, disclosure, checklists |
+| [`docs/presentation.md`](docs/presentation.md) | Slide outline, timed demo scripts, judge Q&A |
+| [`docs/tech-stack.md`](docs/tech-stack.md) | Every library, model and tool, with versions |
+| [`docs/architecture.md`](docs/architecture.md) | Components and the exam session sequence |
+| [`docs/database.md`](docs/database.md) | Tables and local database setup |
+| [`docs/deploy.md`](docs/deploy.md) | Deploying to Render and Vercel |
