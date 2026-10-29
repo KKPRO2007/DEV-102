@@ -4,6 +4,7 @@ export const CH = {
   winToggleMax: 'proctor:window:toggle-maximize',
   winClose: 'proctor:window:close',
   winIsMax: 'proctor:window:is-maximized',
+  winCapture: 'proctor:window:capture',
   deviceId: 'proctor:device:id',
   scanProcesses: 'proctor:system:scan-processes',
   closeProcess: 'proctor:system:close-process',

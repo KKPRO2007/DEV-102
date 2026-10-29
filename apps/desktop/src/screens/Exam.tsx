@@ -3,7 +3,7 @@ import { create } from 'zustand'
 import { AnimatePresence, motion } from 'framer-motion'
 import { AlertTriangle, ArrowLeft, ArrowRight, Check, CheckCircle2, CloudOff, Eraser, Flag, Globe, Keyboard, Loader2, Lock, RefreshCw, Send, WifiOff, X } from 'lucide-react'
 import { api, type ExamPaper, type ViolationResult } from '../lib/api'
-import { startLive } from '../lib/live'
+import { captureWindow, startLive } from '../lib/live'
 import { getProctor } from '../lib/proctorMock'
 import type { BrowsingLog, Question, Severity, ViolationCode } from '../lib/types'
 import QuestionPalette, { type PaletteItem } from '../components/QuestionPalette'
@@ -541,7 +541,16 @@ export default function Exam({ examId, userId, onSubmitted }: ExamProps) {
     (entry: Omit<BrowsingLog, 'id' | 'sessionId'>) => {
       const full: BrowsingLog = { ...entry, id: uid(), sessionId: paperRef.current?.sessionId ?? '' }
       useExamStore.setState((s) => ({ log: [full, ...s.log] }))
-      void api.logBrowsing(examId, full).catch(() => undefined)
+      if (!entry.flaggedAi || !window.proctor) {
+        void api.logBrowsing(examId, full).catch(() => undefined)
+        return
+      }
+      // A picture of the AI tab goes with the entry as evidence; a page that just opened gets a moment to load.
+      void (async () => {
+        if (!entry.query) await new Promise((r) => window.setTimeout(r, 1500))
+        const shot = await captureWindow()
+        await api.logBrowsing(examId, full, shot)
+      })().catch(() => undefined)
     },
     [examId],
   )

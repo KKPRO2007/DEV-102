@@ -404,6 +404,7 @@ function DrawerBody({ session, onClose, onSendWarning, onTerminate, onSessionPat
                     <time dateTime={v.at} className="ml-auto text-xs tabular-nums text-muted">{formatClock(v.at)} · {timeAgo(v.at, now)}</time>
                   </div>
                   <p className="mt-1 text-sm text-muted">{v.message}</p>
+                  {v.evidenceUrl && <img src={v.evidenceUrl} alt={`Evidence: ${VIOLATION_META[v.code].label}`} loading="lazy" className="mt-3 max-h-64 w-full rounded-lg border border-border bg-soft object-contain" />}
                   {!v.reviewed && (
                     <div className="mt-3 flex gap-2">
                       <button onClick={() => void review(v, 'CONFIRMED')} className="flex items-center gap-1 rounded-lg bg-primary-600 px-3 py-1 text-xs font-semibold text-white hover:bg-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"><Check className="h-3.5 w-3.5" aria-hidden="true" />Confirm penalty</button>

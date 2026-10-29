@@ -98,28 +98,33 @@ proctoringRouter.post('/screen', ...candidateOnly, limits.frames, handle(async (
 
 const entrySchema = z.object({
   url: z.string().url().max(2000), title: z.string().max(300).default(''), query: z.string().max(2000).optional(), at: z.string().datetime({ offset: true }).optional(),
+  /** A picture of the AI tab taken by the desktop app, kept as evidence for this entry. */
+  screenshot: z.string().min(100).max(4_000_000).optional(),
 });
 
 proctoringRouter.post('/browsing-logs', ...candidateOnly, limits.ingest, handle(async (req) => {
   const body = parse(z.object({ sessionId: z.string().max(64), entries: z.array(entrySchema).min(1).max(100) }), req.body);
   const s = await liveSession(req, body.sessionId);
   const allowed = readSettings(s.exam.settings).allowedSites;
-  const rows = body.entries
-    .filter((e) => /^https?:/i.test(e.url))
-    .map((e) => ({
-      sessionId: s.id, url: e.url, title: e.title.slice(0, 300), query: e.query?.slice(0, 2000) || null,
-      at: e.at ? new Date(Math.min(Date.parse(e.at), Date.now())) : new Date(), flaggedAi: isAiUrl(e.url),
-    }));
+  const items = body.entries.filter((e) => /^https?:/i.test(e.url));
+  const rows = items.map((e) => ({
+    sessionId: s.id, url: e.url, title: e.title.slice(0, 300), query: e.query?.slice(0, 2000) || null,
+    at: e.at ? new Date(Math.min(Date.parse(e.at), Date.now())) : new Date(), flaggedAi: isAiUrl(e.url),
+  }));
   const created = await prisma.$transaction(rows.map((data) => prisma.browsingLog.create({ data })));
   realtime.toExam(s.examId, 'browsing:new', { sessionId: s.id, entries: created.map(toBrowsing) });
 
   const results: RecordResult[] = [];
-  for (const r of created) {
+  for (const [i, r] of created.entries()) {
     if (!r.flaggedAi) continue;
     const host = new URL(r.url).hostname;
-    results.push(await recordViolation({ sessionId: s.id, code: 'AI_SITE_OPENED', source: 'server', at: r.at, message: `Opened ${host} (${r.title || 'AI assistant'}) in a sandbox tab.` }));
+    // The screenshot proves the typed query when there is one, else the visit.
+    const shot = items[i]?.screenshot ? decodeImage(items[i].screenshot) : null;
+    const evidenceId = shot ? await saveEvidence(s.id, 'screen', shot) : undefined;
+    const proof = (forQuery: boolean) => (evidenceId && forQuery === Boolean(r.query) ? { evidenceId } : {});
+    results.push(await recordViolation({ sessionId: s.id, code: 'AI_SITE_OPENED', source: 'server', at: r.at, message: `Opened ${host} (${r.title || 'AI assistant'}) in a sandbox tab.`, ...proof(false) }));
     if (r.query) {
-      results.push(await recordViolation({ sessionId: s.id, code: 'AI_QUERY_DETECTED', source: 'server', at: r.at, message: `Typed into ${host}: "${r.query.slice(0, 160)}"` }));
+      results.push(await recordViolation({ sessionId: s.id, code: 'AI_QUERY_DETECTED', source: 'server', at: r.at, message: `Typed into ${host}: "${r.query.slice(0, 160)}"`, ...proof(true) }));
     }
   }
   // The agent catches pasted exam questions typed into ordinary search engines too.

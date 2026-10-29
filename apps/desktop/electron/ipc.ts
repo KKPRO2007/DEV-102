@@ -46,6 +46,16 @@ export function registerIpc(getWin: () => BrowserWindow | null, getKiosk: () => 
     getWin()?.close();
   });
   handle(CH.winIsMax, () => Boolean(getWin()?.isFullScreen() || getWin()?.isMaximized()));
+  // Content protection hides the exam window from every screen capture, but not from its own
+  // compositor: this picture includes the sandbox tabs, so proctors see AI sites as the candidate does.
+  handle(CH.winCapture, async () => {
+    const win = getWin();
+    if (!win || win.isDestroyed()) return null;
+    const img = await win.webContents.capturePage();
+    if (img.isEmpty()) return null;
+    const scaled = img.getSize().width > 1280 ? img.resize({ width: 1280, quality: 'good' }) : img;
+    return `data:image/jpeg;base64,${scaled.toJPEG(60).toString('base64')}`;
+  });
   handle(CH.deviceId, () => deviceFingerprint());
   handle(CH.scanProcesses, () => scanProcesses());
   handle(CH.closeProcess, (pid: unknown) => (Number.isInteger(pid) && (pid as number) > 4 ? closeProcess(pid as number) : false));

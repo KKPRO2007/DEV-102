@@ -225,13 +225,50 @@ type RtcMessage = { sessionId: string; from?: string; payload?: { type?: string;
 export type ScreenState = 'connecting' | 'live' | 'unavailable' | 'ended';
 
 /**
+ * The installed app hides the exam window from every screen capture (content protection), so the
+ * entire-screen stream shows it black. There the app pictures its own window instead, sandbox tabs included.
+ */
+const inAppCapture = (): boolean => Boolean(window.proctor && !window.proctor.relaxed);
+
+/** A JPEG data URL of the exam window (sandbox tabs included), or null outside the desktop app. */
+export const captureWindow = (): Promise<string | null> => window.proctor?.window.capture().catch(() => null) ?? Promise.resolve(null);
+
+/** A live video of the exam window, redrawn from captures while one proctor watches. */
+function windowStream(): { stream: MediaStream; stop: () => void } {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1280;
+  canvas.height = 720;
+  const ctx = canvas.getContext('2d');
+  const stream = canvas.captureStream(4);
+  let running = true;
+  void (async () => {
+    const img = new Image();
+    while (running) {
+      const frame = await captureWindow();
+      if (frame && ctx && running) {
+        img.src = frame;
+        await img.decode().catch(() => undefined);
+        if (img.naturalWidth && (canvas.width !== img.naturalWidth || canvas.height !== img.naturalHeight)) {
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
+        }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      }
+      await new Promise((r) => setTimeout(r, 400));
+    }
+  })();
+  return { stream, stop: () => { running = false; stream.getTracks().forEach((t) => t.stop()); } };
+}
+
+/**
  * Candidate side: answers each proctor's offer with the entire-screen stream, one peer per proctor socket.
  * With `withAudio` the microphone travels on the same peer, live only (nothing is recorded).
  */
 export function shareScreenOnRequest(s: Socket, sessionId: string, withAudio = false): () => void {
-  const peers = new Map<string, { pc: RTCPeerConnection; ready: Promise<void> }>();
+  const peers = new Map<string, { pc: RTCPeerConnection; ready: Promise<void>; stop?: () => void }>();
   const close = (id: string) => {
     peers.get(id)?.pc.close();
+    peers.get(id)?.stop?.();
     peers.delete(id);
   };
   let mic: Promise<MediaStream | null> | null = null;
@@ -241,7 +278,8 @@ export function shareScreenOnRequest(s: Socket, sessionId: string, withAudio = f
     const from = m.from;
     if (!from || m.sessionId !== sessionId || m.payload?.type !== 'offer') return;
     close(from);
-    const stream = getScreenStream();
+    const own = inAppCapture() ? windowStream() : null;
+    const stream = own?.stream ?? getScreenStream();
     if (!stream?.active) {
       s.emit('rtc:answer', { sessionId, to: from, payload: { type: 'unavailable' } });
       return;
@@ -257,7 +295,7 @@ export function shareScreenOnRequest(s: Socket, sessionId: string, withAudio = f
       await pc.setLocalDescription(answer);
       s.emit('rtc:answer', { sessionId, to: from, payload: { type: answer.type, sdp: answer.sdp } });
     })().catch(() => close(from));
-    peers.set(from, { pc, ready });
+    peers.set(from, { pc, ready, ...(own ? { stop: own.stop } : {}) });
   });
 
   s.on('rtc:ice', (m: RtcMessage) => {
@@ -412,22 +450,28 @@ function startFrameUploads(sessionId: string): () => void {
   }, 1000);
   const backfill = window.setInterval(() => void sendNextFrame(), 1000);
 
-  let screenTick = 0;
-  const screenTimer = window.setInterval(() => {
+  /** The shared screen, or the app's own window where the installed app hides it from screen capture. */
+  const screenShot = async (width: number, quality: number): Promise<string | null> => {
+    if (inAppCapture()) return captureWindow();
     const stream = getScreenStream();
-    if (!stream) return;
+    if (!stream) return null;
     if (screenVideo.srcObject !== stream) {
       screenVideo.srcObject = stream;
-      void screenVideo.play();
+      await screenVideo.play().catch(() => undefined);
     }
+    return grab(screenVideo, width, quality);
+  };
+
+  let screenTick = 0;
+  const screenTimer = window.setInterval(() => {
     screenTick += 1;
     if (isOffline()) {
-      const kept = screenTick % 3 === 0 ? grab(screenVideo, 960, 0.5) : null;
-      if (kept) void enqueueFrame(sessionId, 'screen', kept);
+      if (screenTick % 3 === 0) void screenShot(960, 0.5).then((kept) => { if (kept) void enqueueFrame(sessionId, 'screen', kept); });
       return;
     }
-    const frame = grab(screenVideo, 1280, 0.6);
-    if (frame) void post('/proctoring/screen', { sessionId, image: frame }).catch(keepOnNetworkError('screen', frame));
+    void screenShot(1280, 0.6).then((frame) => {
+      if (frame) void post('/proctoring/screen', { sessionId, image: frame }).catch(keepOnNetworkError('screen', frame));
+    });
   }, 20_000);
 
   return () => {

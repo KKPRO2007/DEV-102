@@ -293,6 +293,8 @@ export interface ProctorApi {
 export interface NativeBridge extends Omit<ProctorApi, 'screen' | 'system'> {
   readonly native: true;
   deviceId(): Promise<string>;
+  /** `capture` returns a JPEG data URL of the exam window, sandbox tabs included, or null. */
+  window: ProctorApi['window'] & { capture(): Promise<string | null> };
   system: { closeApps(ids: string[]): Promise<string[]> };
   guards: { start(): Promise<void>; stop(): Promise<void> };
   sandbox: { setPolicy(allowedSites: string[]): Promise<void> };

@@ -154,11 +154,12 @@ export const api = {
     }
   },
 
-  async logBrowsing(_examId: string, entry: BrowsingLog): Promise<void> {
+  /** `screenshot` (a picture of the AI tab) is evidence for a live entry only; the offline queue keeps the entry without it. */
+  async logBrowsing(_examId: string, entry: BrowsingLog, screenshot?: string | null): Promise<void> {
     if (!/^https?:/i.test(entry.url)) return; // sandbox:// pages are local placeholders, not real navigations
     const body = { url: entry.url, title: entry.title, ...(entry.query ? { query: entry.query } : {}), at: entry.at, flaggedAi: entry.flaggedAi };
     try {
-      await post('/proctoring/browsing-logs', { sessionId: sid(entry.sessionId), entries: [body] });
+      await post('/proctoring/browsing-logs', { sessionId: sid(entry.sessionId), entries: [{ ...body, ...(screenshot ? { screenshot } : {}) }] });
     } catch (e) {
       if (isNetwork(e)) await enqueue(sid(entry.sessionId), { kind: 'browsing', body });
     }

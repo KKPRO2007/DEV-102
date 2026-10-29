@@ -21,6 +21,7 @@ const bridge: NativeBridge = {
     toggleMaximize: () => invoke<boolean>(CH.winToggleMax),
     close: () => invoke(CH.winClose),
     isMaximized: () => invoke<boolean>(CH.winIsMax),
+    capture: () => invoke<string | null>(CH.winCapture),
     onMaximizeChange: (cb) => listen<boolean>(CH.evMaximize, cb),
   },
   system: { closeApps: (ids) => invoke<string[]>(CH.closeApps, ids) },
