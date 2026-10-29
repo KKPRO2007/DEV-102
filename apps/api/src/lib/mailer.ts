@@ -47,6 +47,26 @@ export const templates = {
 <div style="font-size:34px;font-weight:700;letter-spacing:.35em;color:#1d4ed8;background:#eff6ff;border-radius:12px;padding:16px;text-align:center;margin:18px 0">${esc(code)}</div>
 <p style="color:#475569">It expires in ${ttlMin} minutes. If you did not request it, ignore this email.</p>`),
   }),
+  credentialsCopy: (name: string, role: 'organization' | 'proctor', cand: { name: string; email: string; userId: string }, examTitle: string, examCode: string, startTime: string, link: string, password: string) => {
+    const why = role === 'proctor' ? 'You are proctoring this exam' : 'Your organization sent these exam details';
+    return {
+      subject: `Copy: exam link sent to ${cand.name} (${examCode})`,
+      text: `Hello ${name},
+
+${why}. ${cand.name} (${cand.email}) was sent the details below for ${examTitle} (${examCode}), starting ${startTime}.
+
+Candidate ID: ${cand.userId}
+Exam link: ${link}
+Password: ${password}
+
+The link works on one computer only and expires when the exam ends.`,
+      html: layout(`Copy: link sent to ${cand.name}`, `<p>Hello ${esc(name)},</p><p>${esc(why)}. <b>${esc(cand.name)}</b> (${esc(cand.email)}) was sent these details for <b>${esc(examTitle)}</b> (${esc(examCode)}), starting ${esc(startTime)}.</p>
+<p style="margin:14px 0 4px;color:#475569">Candidate ID</p><div style="font-family:Consolas,monospace;font-size:15px">${esc(cand.userId)}</div>
+<p style="margin:14px 0 4px;color:#475569">Exam link</p><div style="font-family:Consolas,monospace;font-size:13px;word-break:break-all;background:#eff6ff;border-radius:12px;padding:14px;color:#1d4ed8">${esc(link)}</div>
+<p style="margin:14px 0 4px;color:#475569">Password</p><div style="font-family:Consolas,monospace;font-size:15px">${esc(password)}</div>
+<p style="color:#475569;margin-top:16px">The link works on one computer only and expires when the exam ends. Keep this email private.</p>`),
+    };
+  },
   proctorInvite: (name: string, examTitle: string, examCode: string, startTime: string, link: string, password: string | null, appLink: string) => {
     const pw = password ? `Temporary password: ${password}` : 'Password: the one you already use for your proctor account';
     return {

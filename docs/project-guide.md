@@ -213,6 +213,8 @@ LIVE-01 has these exam settings on, and organizations can turn them on for any e
 4. Website, Organization panel > LIVE-01 > Credentials:
    - add your friend as a candidate and send the email; the join link and password are also under **Reveal & copy**
    - invite yourself under **Proctors**
+   - every time a candidate's link is sent, the organization (the exam's creator) and every proctor invited to the exam get a copy with the same link and password
+   - real emails: set `SMTP_USER` (your Gmail address) and `SMTP_PASS` (a Gmail app password from Google Account > Security > App passwords) in `.env`, keep `SMTP_HOST=smtp.gmail.com` and `SMTP_PORT=587`, and restart. Without them, emails go to the dev outbox (Ctrl+Shift+D on the website).
 5. Your friend pastes the link, enters the password, and passes the system check, face and OTP, then consent.
 6. You open the Proctor console on the website or desktop and pick the session. You see:
    - his webcam about once a second
