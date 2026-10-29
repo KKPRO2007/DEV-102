@@ -10,6 +10,7 @@ import { STAGES, useExamStory } from './examStory';
 
 const W = 1560;
 const H = 962;
+const SCALE = 0.7;
 const C = {
   panel: '#0d1d3f', line: '#1c3266', text: '#e6eeff', muted: '#8ea3c8',
   blue: '#1E6FF0', sky: '#38bdf8', amber: '#FFB020', red: '#ef4444', green: '#22c55e',
@@ -162,9 +163,11 @@ function useConsoleTexture(reduce: boolean) {
   const story = useRef({ s, clock });
   story.current = { s, clock };
   const { canvas, texture } = useMemo(() => {
+    // Drawn in 1560 × 962 units but stored at 70% to keep the per-frame texture upload small.
     const canvas = document.createElement('canvas');
-    canvas.width = W;
-    canvas.height = H;
+    canvas.width = Math.round(W * SCALE);
+    canvas.height = Math.round(H * SCALE);
+    canvas.getContext('2d')?.scale(SCALE, SCALE);
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.anisotropy = 8;
@@ -172,10 +175,10 @@ function useConsoleTexture(reduce: boolean) {
   }, []);
   const font = useMemo(() => getComputedStyle(document.body).fontFamily, []);
   const last = useRef(-1);
-  // Redrawn about ten times a second so the scan lines and the alert pulse move.
+  // Redrawn about eight times a second so the scan lines and the alert pulse move.
   useFrame(({ clock: c }) => {
     const t = c.getElapsedTime();
-    if (t - last.current < 0.1) return;
+    if (t - last.current < 0.125) return;
     last.current = t;
     const g = canvas.getContext('2d');
     if (!g) return;
@@ -198,10 +201,10 @@ function Laptop({ reduce }: { reduce: boolean }) {
   const screen = useConsoleTexture(reduce);
   return (
     <group position={[0, -0.95, 0]}>
-      <RoundedBox args={[4.2, 0.14, 2.8]} radius={0.06} smoothness={4} castShadow receiveShadow>
+      <RoundedBox args={[4.2, 0.14, 2.8]} radius={0.06} smoothness={4}>
         <meshPhysicalMaterial {...ALUMINIUM} />
       </RoundedBox>
-      <mesh position={[0, 0.071, -0.5]} receiveShadow>
+      <mesh position={[0, 0.071, -0.5]}>
         <boxGeometry args={[3.8, 0.004, 1.2]} />
         <meshStandardMaterial color="#1b2333" roughness={0.8} />
       </mesh>
@@ -217,7 +220,7 @@ function Laptop({ reduce }: { reduce: boolean }) {
 
       {/* Lid, hinged at the back edge and opened about 108° */}
       <group position={[0, 0.07, -1.38]} rotation={[-0.3, 0, 0]}>
-        <RoundedBox args={[4.2, 2.7, 0.09]} radius={0.06} smoothness={4} position={[0, 1.35, 0]} castShadow>
+        <RoundedBox args={[4.2, 2.7, 0.09]} radius={0.06} smoothness={4} position={[0, 1.35, 0]}>
           <meshPhysicalMaterial {...ALUMINIUM} />
         </RoundedBox>
         <mesh position={[0, 1.35, 0.047]}>
@@ -280,7 +283,7 @@ function Shield({ reduce }: { reduce: boolean }) {
 
   return (
     <group ref={holder} scale={0.62}>
-      <mesh geometry={geometry} castShadow>
+      <mesh geometry={geometry}>
         <meshPhysicalMaterial color="#1E6FF0" metalness={0.25} roughness={0.12} transmission={0.55} thickness={0.6} ior={1.4} clearcoat={1} emissive="#0A4DA6" emissiveIntensity={0.4} />
       </mesh>
       <mesh position={[0, 0.04, 0.2]}>
@@ -345,13 +348,13 @@ function Aim() {
  * Interactive 3D hero: a laptop running the proctor's live console, with a shield orbiting it.
  * It keeps moving; for visitors who prefer reduced motion it moves slowly.
  */
-export default function Hero3D({ reduce }: { reduce: boolean }) {
+export default function Hero3D({ reduce, active = true }: { reduce: boolean; active?: boolean }) {
   return (
     <div className="relative h-[400px] w-full sm:h-[470px]" role="img" aria-label="3D illustration: a laptop showing the proctor's live console where an AI query is flagged, with a glowing shield orbiting it">
-      <Canvas shadows="percentage" dpr={[1, 1.75]} camera={{ position: [0, 1.7, 10.4], fov: 34 }} gl={{ antialias: true, alpha: true }}>
+      <Canvas dpr={[1, 1.5]} camera={{ position: [0, 1.7, 10.4], fov: 34 }} gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }} frameloop={active ? 'always' : 'never'}>
         <Aim />
         <ambientLight intensity={0.35} />
-        <directionalLight position={[4, 6, 5]} intensity={1.6} castShadow shadow-mapSize={[1024, 1024]} />
+        <directionalLight position={[4, 6, 5]} intensity={1.6} />
         <pointLight position={[-5, 2, -3]} color="#1E6FF0" intensity={30} distance={14} />
         {/* Studio reflections from light panels, so no environment map is downloaded. */}
         <Environment resolution={256}>
@@ -371,7 +374,7 @@ export default function Hero3D({ reduce }: { reduce: boolean }) {
         </Rig>
 
         <Sparkles count={60} scale={[9, 4.5, 6]} size={2} speed={reduce ? 0.1 : 0.35} color="#bfdbfe" opacity={0.8} />
-        <ContactShadows position={[0, -0.86, 0]} opacity={0.45} scale={10} blur={2.6} far={3} color="#020817" />
+        <ContactShadows position={[0, -0.86, 0]} opacity={0.45} scale={10} blur={2.6} far={3} color="#020817" frames={1} />
       </Canvas>
     </div>
   );

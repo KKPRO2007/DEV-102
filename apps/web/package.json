@@ -2,7 +2,7 @@
   "name": "@where-u-elevate/web",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbopack",
     "build": "next build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint ."

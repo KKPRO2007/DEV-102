@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { homeFor, useSession } from '@/lib/session';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Activity, ArrowRight, Building2, Download, Eye, Fingerprint, Globe, Link2, Menu, MonitorCheck, ScanFace, ShieldCheck, Sparkles, Timer, UserCheck, X } from 'lucide-react';
@@ -252,6 +252,16 @@ const Hero3D = dynamic(() => import('./Hero3D'), { ssr: false, loading: () => <d
 function HeroVisual() {
   const reduce = useReducedMotion();
   const [webgl, setWebgl] = useState<boolean | null>(null);
+  // Rendering pauses while the hero is scrolled out of view.
+  const box = useRef<HTMLDivElement>(null);
+  const [onScreen, setOnScreen] = useState(true);
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return undefined;
+    const io = new IntersectionObserver(([e]) => setOnScreen(Boolean(e?.isIntersecting)), { rootMargin: '100px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [webgl]);
   useEffect(() => {
     try {
       const c = document.createElement('canvas');
@@ -264,7 +274,7 @@ function HeroVisual() {
   if (webgl === null) return <div className="h-[400px] w-full max-w-[600px] sm:h-[470px]" aria-hidden />;
   if (!webgl) return <ExamShowcase />;
   return (
-    <div className="relative w-full max-w-[600px]">
+    <div ref={box} className="relative w-full max-w-[600px]">
       {/* Frosted glass panel with a soft glow and light beams behind the model */}
       <div className="pointer-events-none absolute inset-x-2 inset-y-6 overflow-hidden rounded-[2.5rem] bg-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,.35),0_30px_80px_-30px_rgba(2,8,23,.6)] ring-1 ring-white/25 backdrop-blur-2xl" aria-hidden>
         <div className="absolute -left-10 top-1/4 h-64 w-64 rounded-full bg-sky-400/30 blur-3xl" />
@@ -273,7 +283,7 @@ function HeroVisual() {
         <div className="absolute -top-1/4 left-[18%] h-[150%] w-16 rotate-[24deg] bg-gradient-to-b from-white/25 via-white/5 to-transparent blur-md" />
         <div className="absolute -top-1/4 left-[46%] h-[150%] w-8 rotate-[24deg] bg-gradient-to-b from-white/20 via-white/5 to-transparent blur-md" />
       </div>
-      <Hero3D reduce={Boolean(reduce)} />
+      <Hero3D reduce={Boolean(reduce)} active={onScreen} />
     </div>
   );
 }

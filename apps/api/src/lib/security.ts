@@ -9,8 +9,12 @@ import { AppError, logger } from './core.js';
 /** Desktop renderer origins are fixed: the Vite dev server and the packaged file:// app (sent as "null"). */
 const DESKTOP_ORIGINS = ['http://localhost:5173', 'http://127.0.0.1:5173', 'null', 'app://dev102'];
 
+/** Development only: npm start moves the website to the next free port (3001, 3002…) when 3000 is busy. */
+const DEV_LOCALHOST = /^http:\/\/(localhost|127\.0\.0\.1):\d{2,5}$/;
+
 export const allowedOrigin = (origin: string | undefined): boolean =>
-  !origin || config.clientOrigins.includes(origin) || DESKTOP_ORIGINS.includes(origin) || config.extensionOrigins.includes(origin);
+  !origin || config.clientOrigins.includes(origin) || DESKTOP_ORIGINS.includes(origin) || config.extensionOrigins.includes(origin)
+  || (!config.isProd && DEV_LOCALHOST.test(origin));
 
 const limiter = (windowMin: number, limit: number, message: string) =>
   rateLimit({
