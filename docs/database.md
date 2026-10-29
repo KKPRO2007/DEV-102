@@ -30,7 +30,7 @@ For production, create migrations with `npm run db:migrate` and apply them with 
 | `Exam` | Title, code, window, duration; JSON `settings`, `extras` and per-exam violation `policy`. Only DRAFT/SCHEDULED is stored; LIVE/COMPLETED are derived from the time window |
 | `Question` | MCQ text, options (JSON), correct option ids, marks, difficulty, tags, position |
 | `Candidate` | One enrollment per exam (`examId + userId` unique) with password hash, email status, reference photo, face verification time, and the encrypted initial password kept until first sign-in |
-| `Invite` | Emailed join links for candidates and proctors: SHA-256 of the token, role, owner, bound device, used, revoked and expiry times (expires when the exam ends) |
+| `Invite` | Emailed join links for candidates and proctors: SHA-256 of the token (lookup) and the token AES-256-GCM encrypted (so admins can copy the current link), role, owner, bound device, used, revoked and expiry times (expires when the exam ends) |
 | `DeviceBinding` | The computer a candidate first signed in from |
 | `ExamSession` | Attempt state: status, deadline, shuffled question order, flags, risk, warnings, consent/face/OTP timestamps, score, receipt, mentor decision |
 | `Answer` | Selected option ids per question (unique per session + question) |

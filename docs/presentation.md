@@ -6,61 +6,38 @@ Brand look: blue gradients `#0A4DA6` → `#1E6FF0`, amber call-outs `#FFB020`, P
 
 ## Round 1 deck: 7 slides, 5 minutes
 
-About 40 seconds per slide. One idea per slide, few words, and the speaker says the rest.
+The deck is `DEV-102_TECHKNIGHTS_Round1.pptx` (kept with the original template in the team's Downloads folder, not in the repo). It keeps the Deviathon 2.0 template: maroon Times New Roman headings, the TECH KNIGHTS badge, GLA and Deviathon logos, and the INNOVATE | CODE | CONQUER footer. Speaker notes with timings are on every slide. Round 1 asks for 5–7 slides, and each slide below answers part of the Round 1 checklist and rubric.
 
-### Slide 1: Title
-- **Smart Proctor**: a secure proctoring browser for MCQ assessments
-- DEV_102 · WUElev8 (Where U Elevate) · DEVIATHON 2.0, GLA University
-- Team TECH KNIGHTS: Mallavarapu Krishna Koushik Reddy, Amritansh Rai, Dhruv Gupta, Rishu Kumari
+| # | Slide | What it shows | Checklist item / rubric criterion | Time |
+| --- | --- | --- | --- | --- |
+| 1 | Title page | PS `DEV_102: Build a Smart Proctoring Browser for Assessment`, Where U Elevate (WUElev8), track **TECH FOR IMPACT**, team TECH KNIGHTS, members, `[Team ID]` and `[Email] · [Phone]` placeholders | Team name, ID, members, contact; PS number and title | 0:20 |
+| 2 | Problem Understanding | PS interpretation and "the twist" (tabs allowed but tracked); chart of self-reported online-exam cheating (Newton & Essex 2023: 29.9% before COVID, 54.7% during, 44.7% overall); who is hurt (organisations, candidates, proctors); use cases; constraints; table mapping all six PS objectives to our answer; key features and the bonus extension | Problem understanding and PS alignment (25) | 0:45 |
+| 3 | Idea Title | Workflow diagram: actor roles → personal join link → identity gate (system check, face, OTP, consent) → secure exam window with four parallel signals (webcam AI every 1 s, sandbox tabs, screen AI every 20 s, native guards) → policy engine (explainable 0–100 risk) → live proctor console and evidence/reports; "How it solves the problem" and "Innovation & uniqueness" | Proposed solution, differentiator, expected outcome; innovation (20) | 1:00 |
+| 4 | Technical Approach | Platform security (identity and access, one person one computer, privacy by design); architecture (desktop, website, extension → API core → AI agent and PostgreSQL); performance and scalability; tech stack with a reason for each choice | Architecture and workflow; tech stack with justification; solution approach (20) | 0:55 |
+| 5 | Feasibility and Viability | Test chart (116 API + 41 desktop + 31 AI agent = 188 passing), 46-check smoke test, 23 violation codes, 5 parts; viability; six-step exam workflow; risks and mitigation; three-phase plan and milestones | Feasibility, risks, mitigation; implementation plan; technical feasibility (15) | 0:50 |
+| 6 | Impact and Benefits | Five pillars (fair at scale, allowed but visible, evidence not accusations, privacy-first, one person one device) and benefits for organisations, candidates, and proctors and institutions | Target users and expected outcome; user needs and impact (10) | 0:35 |
+| 7 | Research and References | Problem validation (Newton & Essex 2023, the PS itself, lockdown browsers); models we build on (YuNet, SFace, MediaPipe Face Landmarker, EfficientDet-Lite0); comparison with typical tools; disclosure of models, APIs, AI coding assistants and data | Existing solutions and the gap; research quality (10); disclosure rule | 0:35 |
 
-### Slide 2: The problem
-- Remote MCQ exams are easy to cheat on: ChatGPT in another tab, a phone, a friend, a second screen.
-- Browser-only proctors can't see other apps or displays. Blanket blocking breaks legitimate use (the brief explicitly allows tab switching).
-- Organizations need **proof**, not just a flag, and candidates need privacy and fairness.
-- **Users:** organizations (admins), proctors, candidates.
+Before submitting:
+- Fill in `[Team ID]`, `[Email]` and `[Phone]` on slide 1.
+- Re-run `npm test` and `npm run test:agent`. If the counts change, update slide 5's chart and speaker notes, and section 4 of [`hackathon.md`](hackathon.md).
+- Name the file the way the organisers ask, and check it opens on another machine.
 
-### Slide 3: Our solution
-- **Organization picks who can sit or proctor** → each person gets an emailed **personal link** + password.
-- **Paste the link in the desktop app** → it knows the exam, the person and their role → password → identity checks.
-- **Candidate:** system check → face + OTP → consent → kiosk exam with sandbox tabs.
-- **Proctor:** face + OTP → live grid of candidates → warn, terminate, review.
-- **AI agent + policy engine:** detect → explain → warn → auto-submit → a human confirms or overrules.
-
-### Slide 4: Architecture
-Use the diagram from [`project-guide.md`](project-guide.md#the-four-parts): Website (Next.js) and Desktop (Electron) → API (Express, Socket.IO, Prisma, PostgreSQL) → AI agent (FastAPI, OpenCV, MediaPipe). Note: REST + Socket.IO for live events, WebRTC for live screen viewing.
-
-### Slide 5: What makes it different
-- **Tab switching allowed, every AI query visible:** proctors see "chatgpt.com: *what is the time complexity of…*".
-- **Explainable risk score** with a reason per flag, not a black box.
-- **Human-in-the-loop:** every penalty keeps evidence; overruling reinstates the candidate.
-- **One person, one computer:** link locked to the first device, expires at exam end, revocable; second-device login blocked.
-- **Proctors are verified too** (face + OTP) and see only their exam.
-- **Privacy-first:** consent screen, monitoring only during the exam, audio analysed on device and never recorded.
-
-### Slide 6: Feasibility, risks, mitigation
-
-| Risk | Mitigation |
-| --- | --- |
-| False positives (gaze, voice) | Cooldowns, sustained-time thresholds, MEDIUM events only warn, human review and overrule |
-| Phone out of camera view | Combined signals + honest limit; object detection catches visible phones and notes |
-| Network drops | Encrypted offline queue, ordered replay, server-synced timer |
-| Link sharing | Device-bound, revocable, expiring links + one live session per candidate |
-| Privacy | Consent, signed evidence URLs, retention cleanup, no raw keystrokes or audio stored |
-
-### Slide 7: Status and roadmap
-- **Built and tested:** website, desktop app, API, AI agent, browser extension; 120 + 32 unit tests, 46-check end-to-end smoke test.
-- **Next:** hosted deployment (Render + Vercel), signed Windows installer, per-exam proctor assignment in the web mentor console, LMS integration, more languages.
+Wording rules for the deck and Q&A:
+- Say **secure exam window**, not "kiosk". The exam window is locked full screen, always on top and excluded from screen capture, while tab switching inside the app's sandbox tabs stays allowed, as the PS asks.
+- Only claim what runs: the test counts are from 30 Oct 2026 runs, and the impact slide makes no numeric impact claims.
+- The cheating figures are self-reported survey data. Say "self-reported" if asked.
 
 ## Round 2 demo: 6 minutes + 4-minute inspection
 
 Have these ready before you start:
-- `npm start` running, with the browser on `/admin` and the Electron window open.
+- `npm start` running, with the browser on `/organization` and the Electron window open.
 - The webcam working and the room lit.
 - **Turn off the dev panel and the outbox in front of judges** if possible, or explain that they're development tools.
 
 | Time | Who | Action | Say |
 | --- | --- | --- | --- |
-| 0:00 | A | Website `/admin/exams/<CPA-26>/credentials` | "The organization picks who sits and who proctors." |
+| 0:00 | A | Website `/organization/exams/<exam>/credentials` | "The organization picks who sits and who proctors." |
 | 0:30 | A | Send credentials to a candidate; invite a proctor by email; show link status | "Each person gets a personal link locked to one computer." |
 | 1:00 | B | Desktop: paste candidate link → details appear → password | "The app reads the exam, user and role from the link. Only the password is typed." |
 | 1:30 | B | System check → face verify → OTP → consent → screen share | "Face and OTP, both required, before any question appears." |
@@ -86,7 +63,7 @@ Have these ready before you start:
 3. **Validation** (45 s): the test table in [`hackathon.md`](hackathon.md#4-test-evidence-round-2-testing-validation-and-reliability); one false-positive story and how overrule fixes it.
 4. **Impact and scale** (45 s):
    - The API is stateless, so it scales horizontally.
-   - Frames are throttled (webcam every 4 s, screen every 20 s).
+   - Frames are throttled: webcam every 1 s (a tick is skipped while the previous frame is still being analysed) and screen every 20 s.
    - Database: hosted Postgres.
    - Hosting cost: free tiers for a pilot, then about one small Render instance per few hundred concurrent candidates. Measure this before quoting a number.
 5. **Limits and roadmap** (30 s): honest limits from [`project-guide.md`](project-guide.md#honest-limits-say-these-before-judges-ask).

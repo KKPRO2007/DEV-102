@@ -2,9 +2,9 @@
 
 ```
  Desktop app (Electron)                 Website (Next.js)
- ├─ renderer: exam UI, sandbox tabs     ├─ admin console, mentor console
+ ├─ renderer: exam UI, sandbox tabs     ├─ organization + proctor consoles
  ├─ preload: window.proctor bridge      └─ candidate lobby, landing pages
- └─ main: kiosk, guards, webview policy          │ REST + Socket.IO /monitor
+ └─ main: lock, guards, webview policy          │ REST + Socket.IO /monitor
             │ REST + Socket.IO                    │
             └──────────────► API (Express) ◄──────┘
                              ├─ policy engine, session sweeper, retention job

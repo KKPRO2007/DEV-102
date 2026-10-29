@@ -23,5 +23,5 @@ The manifest's `key` fixes the extension ID to `fgfompcfejncbbpbipjokoniblfihbnm
 
 ## Limits
 
-- Chrome can't lock the screen the way the desktop app's kiosk mode does. The extension can only report what the candidate does.
+- Chrome can't lock the screen the way the desktop app's secure exam window does. The extension can only report what the candidate does.
 - Typing is tracked on the AI sites listed in `manifest.json`. A site already open when the exam starts begins tracking after it reloads.

@@ -82,7 +82,7 @@ On Render the folder is not part of the image. Either:
 1. `https://<api>/health` returns ok, and `https://<api>/api/v1/public/stats` returns numbers.
 2. The website loads and the admin can sign in.
 3. Create or publish an exam, import a candidate, and sign in with that candidate in the desktop app (built in step 4).
-4. A mentor at `/mentor` sees the candidate live.
+4. A proctor at `/proctor` sees the candidate live.
 
 ## Running the same containers locally
 

@@ -37,7 +37,7 @@ Tie-break order: (1) PS fulfilment, (2) technical implementation, (3) prototype 
 | --- | --- | --- |
 | Problem understanding and PS alignment | 25 | All six objectives, plus every "key feature" and the bonus, mapped to working code (section 3) |
 | Innovation and originality | 20 | Typed-query tracking on AI sites, explainable risk score, human-overrulable penalties, emailed one-device join links, proctor identity checks, on-device audio analysis |
-| Solution approach and architecture | 20 | Four-part architecture: website, desktop kiosk, API with policy engine, Python AI agent ([`project-guide.md`](project-guide.md)) |
+| Solution approach and architecture | 20 | Four-part architecture: website, desktop secure exam app, API with policy engine, Python AI agent ([`project-guide.md`](project-guide.md)) |
 | Technical feasibility | 15 | It already runs end to end on one laptop with `npm start`; deploy files for Render and Vercel exist |
 | User needs and potential impact | 10 | Organizations get fair remote exams without a human per candidate; candidates get a consent-first, privacy-aware app |
 | Research and preparation quality | 10 | Comparison with browser-only proctors (section 5), honest limits, model choices (YuNet, SFace, MediaPipe) |
@@ -49,7 +49,7 @@ Tie-break order: (1) PS fulfilment, (2) technical implementation, (3) prototype 
 | Working prototype and functionality | 25 | Live: org invites → paste link → checks → exam with violations → proctor sees it live → overrule |
 | Technical implementation and engineering | 20 | TypeScript strict in 4 workspaces, zod on every input, Prisma migrations, policy engine, WebRTC, native Electron guards |
 | PS compliance and solution effectiveness | 20 | Section 3 table, with each row pointing to a file |
-| Testing, validation and reliability | 15 | 120 Vitest + 32 pytest + 46-check end-to-end smoke test, all passing (section 4) |
+| Testing, validation and reliability | 15 | 157 Vitest (116 API + 41 desktop) + 31 pytest + 46-check end-to-end smoke test (section 4) |
 | Innovation demonstrated in implementation | 10 | Search log with typed AI queries, risk explanations, reinstatement on overrule, join-link device lock |
 | Team ownership and technical understanding | 10 | Each member owns and explains one area (section 7) |
 
@@ -61,7 +61,7 @@ Tie-break order: (1) PS fulfilment, (2) technical implementation, (3) prototype 
 | Technical excellence and reliability | 20 | Test results, offline queue, server-authoritative policy, signed evidence URLs |
 | Innovation and differentiation | 15 | Section 5 comparison |
 | Real-world impact and user value | 15 | Scales from one classroom to many exams; human review keeps it fair |
-| Scalability, feasibility and sustainability | 10 | Stateless API, hosted Postgres, throttled frames (4 s webcam, 20 s screen), Docker + Render + Vercel |
+| Scalability, feasibility and sustainability | 10 | Stateless API, hosted Postgres, throttled frames (webcam every 1 s, skipped while the last one is still being analysed; screen every 20 s), Docker + Render + Vercel |
 | Live demonstration and usability | 10 | Clean, timed demo (see [`presentation.md`](presentation.md)) |
 | Presentation and jury defense | 5 | Q&A prep in [`presentation.md`](presentation.md) |
 
@@ -69,11 +69,11 @@ Tie-break order: (1) PS fulfilment, (2) technical implementation, (3) prototype 
 
 | # | Requirement | Status | Where |
 | --- | --- | --- | --- |
-| 1 | Webcam capture, eye tracking, unusual behaviour | Done | Agent `backend-services/agents/face_agent.py`, `vision.py` (YuNet, SFace, Face Landmarker gaze/head pose, EfficientDet phones/notes); desktop `src/lib/live.ts` sends a frame every 4 s |
+| 1 | Webcam capture, eye tracking, unusual behaviour | Done | Agent `backend-services/agents/face_agent.py`, `vision.py` (YuNet, SFace, Face Landmarker gaze/head pose, EfficientDet phones/notes); desktop `src/lib/live.ts` sends a frame every second |
 | 2 | MCQ tests with a backend that stores questions | Done (PostgreSQL instead of Airtable) | API `modules/exams.ts`, `sessions.ts`; single, multiple and numeric questions; CSV/Excel import |
 | 3 | Block multiple logins, screen mirroring, external devices | Done | API device binding + one live session + join link locked to one computer; `electron/security/guards.ts` (displays, mirroring, USB, VM, remote desktop, 60+ blacklisted apps) |
 | 4 | Face recognition or OTP before access | Done: **both** | `POST /auth/face/verify` + email OTP for candidates **and** proctors; the session cannot start without both |
-| 5 | Simple, distraction-free, responsive UI | Done | Desktop kiosk exam UI; responsive website layouts (check every page at 375 px before the demo) |
+| 5 | Simple, distraction-free, responsive UI | Done | Full-screen secure exam window; responsive website layouts (check every page at 375 px before the demo) |
 | 6 | Allow tab switching but track searches (ChatGPT/Claude + what was typed) | Done | `electron/browser-sandbox/tracker.ts`, agent `browsing_agent.py`; mentors see each URL and the typed query |
 | — | Activity logging (actions, keystrokes, mouse) | Done (inside the exam window, no raw keys) | `src/lib/live.ts`, `POST /proctoring/activity` |
 | — | Timer with auto-submit | Done | Server deadline + 5 s sweeper in `apps/api/src/lib/jobs.ts`; warnings at 10/5/1 min |
@@ -86,13 +86,13 @@ The PDF suggested Airtable or Firebase. We chose PostgreSQL + Prisma for relatio
 
 ## 4. Test evidence (Round 2 "testing, validation and reliability")
 
-All numbers come from real runs on this repo. Re-run them before each round and update this table if the counts change.
+All numbers come from real runs on this repo (unit-test counts re-run on 30 Oct 2026). Re-run them before each round and update this table if the counts change. One full `npm test` run that day had a single failure in `offline-pause.test.ts` that passed on its own and in a full rerun; it looks timing-sensitive, so rerun before quoting results live.
 
 | Suite | Command | Result | Covers |
 | --- | --- | --- | --- |
-| API unit tests | `npm test -w apps/api` | **91 passed** | Scoring, numeric answers, violation policy (cooldown, warn, auto-submit, reinstate), OTP expiry and attempts, lockout, join links (preview, device lock, revoked, expired, proctor scope), CORS origins, result release |
-| Desktop unit tests | `npm test -w apps/desktop` | **29 passed** | Answer parsing, on-device voice detector, submitted screen, join-link parsing |
-| AI agent tests | `npm run test:agent` | **32 passed** | Browsing classification, phone and notes rules, risk score |
+| API unit tests | `npm test -w apps/api` | **116 passed** | Scoring, numeric answers, violation policy (cooldown, warn, auto-submit, reinstate, proctor-only), OTP expiry and attempts, lockout, join links (preview, device lock, revoked, expired, proctor scope, shared copy-link), credential copies to org and proctors, offline frames and clock pause, CORS origins, result release |
+| Desktop unit tests | `npm test -w apps/desktop` | **41 passed** | Answer parsing, on-device voice detector, browsing visits, native guards, offline queue, submitted screen, join-link parsing |
+| AI agent tests | `npm run test:agent` | **31 passed** | Browsing classification, phone and notes rules, risk score |
 | End-to-end smoke | `npm run smoke` (with `npm start` running) | **46 checks, all passed** | Admin creates exam → import → credentials → candidate login → OTP → face → session → autosave → AI site → second device blocked → overrule reinstates → signed evidence → submit → reports |
 | Type and lint | `npm run typecheck`, `npm run lint` | Clean | All workspaces |
 
@@ -107,7 +107,7 @@ All numbers come from real runs on this repo. Re-run them before each round and 
 
 | | Browser-only proctoring (typical extension or web tool) | Smart Proctor |
 | --- | --- | --- |
-| Control of the computer | Can't close apps or see other displays | Kiosk window, blacklisted-app scanner, display, mirroring, USB, VM checks |
+| Control of the computer | Can't close apps or see other displays | Locked full-screen exam window, blacklisted-app scanner, display, mirroring, USB, VM checks |
 | AI tools | Usually blocked outright or not seen | Allowed as the brief asks, but every AI site and **typed query** is logged and shown |
 | Decisions | Black-box flag | Explainable 0–100 risk with a reason per flag; a human confirms or overrules, and overruling reinstates |
 | Who may sit the exam | Shared codes or links | Personal emailed link, locked to one computer, expires at exam end, revocable |
@@ -144,7 +144,7 @@ The rules require "a clear explanation of each member's contribution and technic
 
 | Area | Owner | Can explain |
 | --- | --- | --- |
-| Desktop app: kiosk, guards, sandbox tabs, exam UI | _name_ | `apps/desktop/electron/*`, `screens/Exam.tsx` |
+| Desktop app: exam-window lock, guards, sandbox tabs, exam UI | _name_ | `apps/desktop/electron/*`, `screens/Exam.tsx` |
 | API: auth, join links, policy engine, realtime, reports | _name_ | `apps/api/src/lib/policy.ts`, `modules/auth.ts`, `modules/invites.ts` |
 | AI agent: face, gaze, objects, browsing, risk | _name_ | `backend-services/vision.py`, `agents/*` |
 | Website: admin, mentor console, join page; deploy and docs | _name_ | `apps/web/src/app/*`, `docs/deploy.md` |
@@ -153,16 +153,16 @@ The rules require "a clear explanation of each member's contribution and technic
 
 ### Round 1
 
-- [ ] Team name, team ID, members, contact details
+- [ ] Team name, team ID, members, contact details (name and members are on slide 1; fill in the `[Team ID]`, `[Email]` and `[Phone]` placeholders)
 - [x] PS number/title and interpretation (section 1, [`project-guide.md`](project-guide.md))
-- [x] Target users, pain points, use cases, constraints ([`presentation.md`](presentation.md) slide 2)
+- [x] Target users, pain points, use cases, constraints (deck slide 2)
 - [x] Existing solutions and the gap (section 5)
 - [x] Solution, differentiator, expected outcome
 - [x] Architecture and workflow ([`project-guide.md`](project-guide.md), [`architecture.md`](architecture.md))
 - [x] Tech stack with justification ([`tech-stack.md`](tech-stack.md))
-- [x] Feasibility, risks, mitigation ([`presentation.md`](presentation.md) slide 6)
-- [x] Implementation plan and milestones ([`presentation.md`](presentation.md) slide 7)
-- [ ] 5–7 slide deck. The current file in Downloads, `Deviathon2.0-TECHKNIGHTS (1).pptx`, is for a **different PS** (project auditing) and must be rebuilt from [`presentation.md`](presentation.md)
+- [x] Feasibility, risks, mitigation (deck slide 5)
+- [x] Implementation plan and milestones (deck slide 5)
+- [x] 5–7 slide deck: `DEV-102_TECHKNIGHTS_Round1.pptx` (7 slides on the Deviathon template, with speaker notes). Its content and timing are in [`presentation.md`](presentation.md). The old `Deviathon2.0-TECHKNIGHTS (1).pptx` was for a different PS; don't submit it.
 
 ### Round 2
 

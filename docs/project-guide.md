@@ -19,7 +19,7 @@ Also asked for: activity logging, a timer with auto-submit, automatic warnings a
 
 ## Our answer in one paragraph
 
-An organization creates an exam on the website and selects its candidates and proctors. Each person gets an email with a **personal join link** and a password. They paste the link into the **Smart Proctor desktop app**, which recognises who they are, what exam it is and what role they have, and asks only for the password. Candidates pass a system check, face verification and an email OTP, consent to monitoring, share their screen and take the exam in kiosk mode. A **Python AI agent** watches webcam frames, screen frames and browsing, and a **policy engine** on the server warns, then auto-submits on repeated or critical violations. **Proctors** verify their face and an OTP too, then watch every candidate live and review evidence. Every penalty can be confirmed or overruled by a human.
+An organization creates an exam on the website and selects its candidates and proctors. Each person gets an email with a **personal join link** and a password. They paste the link into the **Smart Proctor desktop app**, which recognises who they are, what exam it is and what role they have, and asks only for the password. Candidates pass a system check, face verification and an email OTP, consent to monitoring, share their screen and take the exam in a locked, full-screen secure exam window. A **Python AI agent** watches webcam frames, screen frames and browsing, and a **policy engine** on the server warns, then auto-submits on repeated or critical violations. **Proctors** verify their face and an OTP too, then watch every candidate live and review evidence. Every penalty can be confirmed or overruled by a human.
 
 ## The four parts
 
@@ -27,7 +27,7 @@ An organization creates an exam on the website and selects its candidates and pr
   Organization (website)                 Candidate / Proctor (desktop app)
   apps/web  · Next.js 15                 apps/desktop · Electron 35
   admin console, mentor console,         paste link → password → checks
-  /join/<token>, landing pages           kiosk exam, sandbox tabs, monitor
+  /join/<token>, landing pages           secure exam, sandbox tabs, monitor
            │  REST + Socket.IO                    │  REST + Socket.IO + WebRTC
            └──────────────► apps/api ◄────────────┘
                             Express 5 · Prisma · Socket.IO
@@ -58,17 +58,18 @@ An organization creates an exam on the website and selects its candidates and pr
 
 ## Flow 1: organization sets up an exam (website)
 
-1. `/admin/exams/new`: a wizard for basics, schedule, settings (shuffle, negative marking, allowed sites, audio checks) and the violation policy, with a simulator.
-2. `/admin/exams/[id]/questions`: add MCQ (single or multiple answer) and numeric questions by hand, or import CSV/Excel.
-3. `/admin/exams/[id]/credentials`:
+1. `/organization/exams/new`: a wizard for basics, schedule, settings (shuffle, negative marking, allowed sites, audio checks) and the violation policy, with a simulator.
+2. `/organization/exams/[id]/questions`: add MCQ (single or multiple answer) and numeric questions by hand, or import CSV/Excel.
+3. `/organization/exams/[id]/credentials`:
    - **Candidates:** import name + email. User IDs (`WUE26xxxx`) and passwords are generated. **Send credentials** emails each person their own join link plus password. The table shows email status and link status (not used, in use + device locked, revoked, expired), with Resend, Reset password and **Revoke**.
    - **Proctors:** invite by name + email. A mentor account is created if needed, and its temporary password goes in the same email. Resend or revoke at any time.
    - **Passwords:** every candidate and proctor row has **Reveal** and **Copy**. The stored password is encrypted and kept only until that person's first sign-in, and every reveal is audited. After the first sign-in the row offers **Reset & copy**, which issues a new password and signs a proctor out.
-4. `/admin/exams/[id]/reports`: results, score distribution, violation heatmap, Excel and PDF downloads.
+   - **Join links:** while a candidate's or proctor's link is active (not used yet, or in use), the row has **Copy link**, so any organization admin can copy the current link without resending it. Each copy is audited (`invite.reveal_link`). Links issued before this feature cannot be recovered; resend those.
+4. `/organization/exams/[id]/reports`: results, score distribution, violation heatmap, Excel and PDF downloads.
 
 ## Flow 2: join link (both roles)
 
-- The link looks like `https://<site>/join/<48-hex token>`. The server stores only the SHA-256 of the token (`Invite` table), so a database leak does not reveal working links.
+- The link looks like `https://<site>/join/<48-hex token>`. The server looks links up by the SHA-256 of the token (`Invite.tokenHash`). The token itself is also kept AES-256-GCM encrypted with the server secret (`tokenCipher`), so any organization admin can copy the current link; a database leak alone does not reveal working links.
 - Clicking it in Gmail opens the `/join` page. That page shows who it's for and the exam, and has **Copy exam link** and **Get the desktop app** buttons.
 - In the desktop app the person pastes the link. The app calls `GET /auth/invites/:token`, which shows the exam, name, User ID or masked email, and role. Then `POST /auth/invites/login` with the password and a device fingerprint.
 - Rules enforced by the server:
@@ -90,7 +91,7 @@ Code: `apps/api/src/modules/invites.ts`, `modules/auth.ts` (`openInvite`, `/invi
    - A 6-digit code is emailed. It is HMAC-hashed, expires in 5 minutes, allows 5 attempts and has a 30 s resend cooldown.
 4. **Consent** (`ScreenShareConsent.tsx`): a plain list of what is monitored, then an entire-screen share.
 5. **Exam** (`Exam.tsx`):
-   - Kiosk window with a server-synced timer (warnings at 10, 5 and 1 min), autosave, a question palette and mark-for-review.
+   - Secure exam window (full screen, always on top, excluded from screen capture) with a server-synced timer (warnings at 10, 5 and 1 min), autosave, a question palette and mark-for-review.
    - Sandbox browser tabs and a webcam thumbnail.
    - Warning modal and lock overlay on focus loss.
 6. **Submitted** (`Submitted.tsx`): submitted, auto-submitted or disqualified, with a receipt number. No answers are shown.
@@ -99,7 +100,7 @@ What runs during the exam:
 
 | Signal | How often | Where | Raises |
 | --- | --- | --- | --- |
-| Webcam frame | every 4 s | agent `face_agent.py`, `vision.py` | `NO_FACE`, `MULTIPLE_FACES`, `CAMERA_BLOCKED`, `GAZE_AWAY`, `FACE_MISMATCH`, `PHONE_DETECTED`, `NOTES_DETECTED` |
+| Webcam frame | every 1 s | agent `face_agent.py`, `vision.py` | `NO_FACE`, `MULTIPLE_FACES`, `CAMERA_BLOCKED`, `GAZE_AWAY`, `FACE_MISMATCH`, `PHONE_DETECTED`, `NOTES_DETECTED` |
 | Screen frame | every 20 s | agent `screen_agent.py` (LLM optional) | AI chat or messaging on screen |
 | Sandbox tabs | every navigation and typed query | `electron/browser-sandbox/tracker.ts`, agent `browsing_agent.py` | `AI_SITE_OPENED`, `AI_QUERY_DETECTED` (typed question), match against exam questions |
 | Native guards | continuous | `electron/security/guards.ts`, `kiosk.ts` | `WINDOW_BLUR`, `SHORTCUT_BLOCKED`, `CLIPBOARD_USE`, `EXTERNAL_DEVICE`, `MULTI_MONITOR`, `SCREEN_MIRRORING`, `VM_DETECTED`, `REMOTE_DESKTOP`, `SCREEN_SHARE_STOPPED`, `BLACKLISTED_APP` |
@@ -113,11 +114,11 @@ Offline: answers, events and browsing logs are queued in an encrypted store (Win
 ## Flow 4: proctor monitors (desktop or web)
 
 1. Paste the proctor link → password → **face verification + email OTP**.
-   - There's no system check, consent or kiosk lock; proctors keep their normal desktop.
+   - There's no system check, consent or exam-window lock; proctors keep their normal desktop.
    - Until both checks pass, the API refuses every staff route for that sign-in (`proctorVerified` in `apps/api/src/lib/auth.ts`).
 2. **Live monitor** (`MentorMonitor.tsx`): a grid of candidates with live webcam snapshots, risk badges and status, plus a live violation feed. A proctor signed in by link sees only the exam the link was for.
 3. **Session drawer** (`SessionDrawer.tsx`): violation timeline, browsing and search log with AI sites and the typed query highlighted, **Watch screen** over WebRTC, warn and terminate.
-4. **Review** (website `/mentor/sessions/[id]`): evidence gallery and **Confirm** or **Overrule** with a reason. Overruling the violation that ended a session reinstates the candidate if time remains.
+4. **Review** (website `/proctor/sessions/[id]`): evidence gallery and **Confirm** or **Overrule** with a reason. Overruling the violation that ended a session reinstates the candidate if time remains.
 
 ## Violations and the policy engine
 
@@ -153,7 +154,7 @@ Full field list: [`database.md`](database.md).
 - **Passwords and lockout:** bcrypt cost 12, with a lockout after 5 failures.
 - **Tokens:** JWTs carry a token version, so logout, a password reset, a new sign-in or revoking a link all revoke older tokens. Proctor tokens from a join link are limited to one exam.
 - **Devices and sessions:** device binding per candidate and per link, and one active session per candidate.
-- **Join links:** stored only as SHA-256 hashes. They expire at exam end and can be revoked.
+- **Join links:** looked up by SHA-256 hash; the token is kept AES-256-GCM encrypted only so admins can copy it, and each copy is audited. They expire at exam end and can be revoked.
 - **OTPs:** HMAC-hashed, with a 5-minute expiry.
 - **Request handling:** zod on every input, Prisma only (no raw SQL with user input), and role guards (`staff`, `adminOnly`, `candidateOnly`) on every route.
 - **HTTP hardening:** Helmet with a strict CSP, strict CORS, and per-route rate limits.
@@ -185,7 +186,7 @@ npm start
 | Desktop app | opens as a window | Dev panel (Ctrl+Shift+D) → **Candidate link** or **Proctor link** copies a fresh join link and shows its password (`Demo@2026` / `Mentor@123`) |
 
 Outside production the one-time code also shows on the identity-check screen (and in the extension), even when it is emailed. **Developer mode** (`npm start`, without `PROCTOR_STRICT=1`) has no native restrictions, so the full flow runs on a dev machine:
-- no kiosk lock, blocked shortcuts, focus-loss lock or content protection
+- no exam-window lock, blocked shortcuts, focus-loss lock or content protection
 - no process, display, USB or clipboard guards
 - system-check failures are shown but never block Continue
 - coding assistants (`claude`, `codex`, `cursor`, `copilot`, `windsurf`) are left out of the app list
@@ -214,7 +215,7 @@ LIVE-01 has these exam settings on, and organizations can turn them on for any e
    - add your friend as a candidate and send the email; the join link and password are also under **Reveal & copy**
    - invite yourself under **Proctors**
    - every time a candidate's link is sent, the organization (the exam's creator) and every proctor invited to the exam get a copy with the same link and password
-   - real emails: set `SMTP_USER` (your Gmail address) and `SMTP_PASS` (a Gmail app password from Google Account > Security > App passwords) in `.env`, keep `SMTP_HOST=smtp.gmail.com` and `SMTP_PORT=587`, and restart. Without them, emails go to the dev outbox (Ctrl+Shift+D on the website).
+   - real emails: set `SMTP_USER` (your Gmail address) and `SMTP_PASS` (a Gmail app password from Google Account > Security > App passwords) in `.env`, keep `SMTP_HOST=smtp.gmail.com` and `SMTP_PORT=587`, and restart. Leave `MAIL_FROM` blank to send from `SMTP_USER` (Gmail rejects an unverified From address). Without SMTP, emails go to the dev outbox (Ctrl+Shift+D on the website); in production (`NODE_ENV=production`) they fail instead and show as FAILED in the email log.
 5. Your friend pastes the link, enters the password, and passes the system check, face and OTP, then consent.
 6. You open the Proctor console on the website or desktop and pick the session. You see:
    - his webcam about once a second

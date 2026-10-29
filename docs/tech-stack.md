@@ -7,7 +7,7 @@ Everything the project uses, taken from each workspace's `package.json`, `backen
 | Area | Technology | What it does |
 | --- | --- | --- |
 | Website | Next.js 15, React 19, TypeScript, Tailwind CSS 4 | Public site, admin console, mentor console, candidate lobby, `/join` page for emailed links |
-| Desktop app | Electron 35, React 19, electron-vite (Vite 6), TypeScript | Kiosk exam browser for candidates, live monitor for proctors, native guards (camera, screen, displays, USB, VM) |
+| Desktop app | Electron 35, React 19, electron-vite (Vite 6), TypeScript | Secure exam window for candidates, live monitor for proctors, native guards (camera, screen, displays, USB, VM) |
 | Browser extension (bonus) | Chrome Manifest V3, TypeScript | Exam companion for a normal browser: reports tab switches, visited URLs, AI-site queries and focus loss |
 | API | Node.js 22, Express 5, TypeScript, Prisma | REST API under `/api/v1`: auth, join links, exams, sessions, policy engine, reports |
 | Realtime | Socket.IO 4, WebRTC | Live session status, violations, webcam snapshots, and screen viewing between candidate and proctor |
@@ -82,7 +82,7 @@ No Docker is needed for local development. `npm start` runs everything.
 
 **Dev dependencies:** `electron` 35.1.2, `electron-vite` ^3.1.0, `vite` ^6.2.2, `@vitejs/plugin-react` ^4.3.4, `electron-builder` ^26.0.12 (Windows NSIS installer), `tailwindcss` ^4.0.12, `@tailwindcss/vite` ^4.3.3, `postcss` ^8.5.3, `typescript` ^5.8.2, `vitest` ^3.2.7, `eslint` ^9.39.5, `eslint-plugin-react-hooks` ^5.2.0, `typescript-eslint`, `@eslint/js`, `globals`, `@types/react`, `@types/react-dom`, `@types/node`.
 
-**Electron and browser APIs used:** `BrowserWindow` kiosk mode with content protection, `webview` sandbox tabs in an isolated in-memory session, `safeStorage` (Windows DPAPI) for the encrypted offline queue, `desktopCapturer` / `getDisplayMedia` for the entire-screen share, `getUserMedia` for webcam and microphone, Web Audio for on-device voice detection, `RTCPeerConnection` for live screen viewing (STUN `stun.l.google.com:19302`).
+**Electron and browser APIs used:** `BrowserWindow` locked full screen, always on top, with content protection, `webview` sandbox tabs in an isolated in-memory session, `safeStorage` (Windows DPAPI) for the encrypted offline queue, `desktopCapturer` / `getDisplayMedia` for the entire-screen share, `getUserMedia` for webcam and microphone, Web Audio for on-device voice detection, `RTCPeerConnection` for live screen viewing (STUN `stun.l.google.com:19302`).
 
 ## Website (`apps/web`)
 

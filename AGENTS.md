@@ -9,8 +9,8 @@ Where U Elevate Smart Proctor (hackathon DEV_102). Monorepo:
 | Path | What |
 | --- | --- |
 | `apps/api` | Express 5 + Socket.IO + Prisma API, mounted at `/api/v1`. Response envelope `{ ok, data }` / `{ ok:false, error:{ code, message } }` |
-| `apps/web` | Next.js 15 website: landing, `/login`, `/lobby` (candidate), `/admin/*`, `/mentor/*`. All data goes through `src/lib/api.ts` |
-| `apps/desktop` | Electron 35 kiosk exam app. Renderer `src/`, native layer `electron/`, API client `src/lib/api.ts`, live channels `src/lib/live.ts` |
+| `apps/web` | Next.js 15 website: landing, `/login`, `/lobby` (candidate), `/organization/*`, `/proctor/*` (old `/admin` and `/mentor` paths redirect). All data goes through `src/lib/api.ts` |
+| `apps/desktop` | Electron 35 secure exam app. Renderer `src/`, native layer `electron/`, API client `src/lib/api.ts`, live channels `src/lib/live.ts` |
 | `backend-services` | FastAPI AI agent (OpenCV YuNet/SFace, MediaPipe). Called only by the API with `X-Agent-Key` |
 | `database/prisma` | `schema.prisma`, `seed.ts`, `seed-data.ts`, `faces/` (test portraits) |
 | `scripts` | `start.mjs` (runs everything), `db.mjs` (embedded Postgres), `smoke.mjs` (end-to-end API test), `python.cjs`, `fetch-faces.mjs` |
