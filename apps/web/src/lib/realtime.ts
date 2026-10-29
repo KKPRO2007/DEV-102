@@ -2,7 +2,7 @@
 
 import { io, type Socket } from 'socket.io-client'
 import { API_ORIGIN, getToken } from './http'
-import type { Session, Violation } from './types'
+import type { BrowsingLog, Session, Violation } from './types'
 
 export interface ViolationEvent {
   sessionId: string
@@ -24,6 +24,8 @@ type Handlers = {
   'session:status': (e: StatusEvent) => void
   'session:progress': (e: ProgressEvent) => void
   'frame:snapshot': (e: { sessionId: string; image: string; at: string }) => void
+  /** Sites opened and text typed or pasted in the candidate's sandbox tabs, as it happens. */
+  'browsing:new': (e: { sessionId: string; entries: BrowsingLog[] }) => void
 }
 
 let socket: Socket | null = null
@@ -90,6 +92,7 @@ export function watchScreen(sessionId: string, onStream: (stream: MediaStream) =
   let stopped = false
 
   pc.addTransceiver('video', { direction: 'recvonly' })
+  pc.addTransceiver('audio', { direction: 'recvonly' })
   pc.ontrack = (e) => {
     onStream(e.streams[0] ?? new MediaStream([e.track]))
     onState('live')

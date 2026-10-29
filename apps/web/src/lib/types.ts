@@ -35,6 +35,12 @@ export interface ExamSettings {
   autoSubmit: boolean;
   /** Voice and microphone checks on the candidate's computer. No audio leaves the device. */
   audioMonitoring: boolean;
+  /** Violations only flag to the proctor: no candidate warnings, no automatic submit. */
+  proctorOnly?: boolean;
+  /** Questions are answered in order and cannot be revisited. */
+  oneWay?: boolean;
+  /** Microphone streamed live to proctors (never recorded). */
+  liveAudio?: boolean;
 }
 
 export interface Exam {

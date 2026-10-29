@@ -35,14 +35,14 @@ interface WizardForm {
   title: string; code: string; category: string; description: string; instructions: string
   questionCount: string; totalMarks: string
   date: string; time: string; durationMin: string; lateEntryMin: string; checkInMin: string
-  shuffle: boolean; negativeMarking: boolean; negativeValue: string; allowedSites: string[]; allowCalculator: boolean; audioMonitoring: boolean; releaseResults: ExamExtras['releaseResults']
+  shuffle: boolean; negativeMarking: boolean; negativeValue: string; allowedSites: string[]; allowCalculator: boolean; audioMonitoring: boolean; proctorOnly: boolean; oneWay: boolean; liveAudio: boolean; releaseResults: ExamExtras['releaseResults']
   policy: ViolationPolicy
 }
 
 const EMPTY: WizardForm = {
   title: '', code: '', category: CATEGORIES[0], description: '', instructions: DEFAULT_INSTRUCTIONS, questionCount: '60', totalMarks: '60',
   date: '', time: '10:00', durationMin: '90', lateEntryMin: '10', checkInMin: '30',
-  shuffle: true, negativeMarking: true, negativeValue: '0.25', allowedSites: [], allowCalculator: false, audioMonitoring: false, releaseResults: 'AFTER_REVIEW',
+  shuffle: true, negativeMarking: true, negativeValue: '0.25', allowedSites: [], allowCalculator: false, audioMonitoring: false, proctorOnly: false, oneWay: false, liveAudio: false, releaseResults: 'AFTER_REVIEW',
   policy: DEFAULT_POLICY,
 }
 
@@ -284,7 +284,7 @@ export default function NewExamPage() {
         exam: {
           title: form.title.trim(), code: form.code, startsAt: new Date(start).toISOString(), endsAt: new Date(start + (duration + late) * 60_000).toISOString(),
           durationMin: duration, totalMarks: num(form.totalMarks), questionCount: num(form.questionCount),
-          settings: { shuffle: form.shuffle, negativeMarking: form.negativeMarking, allowedSites: form.allowedSites, maxWarnings: form.policy.maxWarnings, autoSubmit: form.policy.autoSubmit, audioMonitoring: form.audioMonitoring },
+          settings: { shuffle: form.shuffle, negativeMarking: form.negativeMarking, allowedSites: form.allowedSites, maxWarnings: form.policy.maxWarnings, autoSubmit: form.policy.autoSubmit, audioMonitoring: form.audioMonitoring, proctorOnly: form.proctorOnly, oneWay: form.oneWay, liveAudio: form.liveAudio },
         },
         extras: {
           category: form.category, description: form.description.trim(), instructions: form.instructions.trim(), lateEntryMin: late, checkInMin: num(form.checkInMin),
@@ -448,6 +448,9 @@ export default function NewExamPage() {
                     )}
                     <Toggle checked={form.allowCalculator} onChange={(v) => set('allowCalculator', v)} label="On-screen calculator" description="A basic calculator inside the secure exam window." />
                     <Toggle checked={form.audioMonitoring} onChange={(v) => set('audioMonitoring', v)} label="Audio monitoring" description="Flags talking and a muted microphone. Sound is analysed on the candidate's computer and never recorded or sent." />
+                    <Toggle checked={form.proctorOnly} onChange={(v) => set('proctorOnly', v)} label="Proctor-only alerts" description="Violations only flag to proctors: the candidate sees no warnings and the exam is never ended automatically." />
+                    <Toggle checked={form.oneWay} onChange={(v) => set('oneWay', v)} label="One-way questions" description="Questions are answered in order; a candidate cannot go back after Next." />
+                    <Toggle checked={form.liveAudio} onChange={(v) => set('liveAudio', v)} label="Live microphone to proctors" description="Proctors watching the screen can also listen live. Nothing is recorded; candidates are told on the consent screen." />
                   </div>
                   <div className="rounded-xl border border-border p-5">
                     <p className="flex items-center gap-2 text-sm font-semibold text-text"><Globe className="h-4 w-4 text-accent" aria-hidden="true" /> Allowed websites in the sandbox browser</p>

@@ -272,6 +272,9 @@ function SettingsTab({ d, onSaved }: { d: Loaded; onSaved: (exam: Exam, policy: 
         <Toggle checked={settings.shuffle} onChange={(v) => setSettings({ ...settings, shuffle: v })} label="Shuffle questions and options" disabled={readOnly} />
         <Toggle checked={settings.negativeMarking} onChange={(v) => setSettings({ ...settings, negativeMarking: v })} label="Negative marking" disabled={readOnly} />
         <Toggle checked={settings.audioMonitoring} onChange={(v) => setSettings({ ...settings, audioMonitoring: v })} label="Audio monitoring" description="Flags talking and a muted microphone. Sound is analysed on the candidate's computer and never recorded or sent." disabled={readOnly} />
+        <Toggle checked={Boolean(settings.proctorOnly)} onChange={(v) => setSettings({ ...settings, proctorOnly: v })} label="Proctor-only alerts" description="Violations only flag to proctors: the candidate sees no warnings and the exam is never ended automatically." disabled={readOnly} />
+        <Toggle checked={Boolean(settings.oneWay)} onChange={(v) => setSettings({ ...settings, oneWay: v })} label="One-way questions" description="Questions are answered in order; a candidate cannot go back after Next." disabled={readOnly} />
+        <Toggle checked={Boolean(settings.liveAudio)} onChange={(v) => setSettings({ ...settings, liveAudio: v })} label="Live microphone to proctors" description="Proctors watching the screen can also listen live. Nothing is recorded; candidates are told on the consent screen." disabled={readOnly} />
         <div>
           <p className="flex items-center gap-2 text-sm font-medium text-text"><Globe className="h-4 w-4 text-accent" aria-hidden="true" /> Allowed websites</p>
           <div className="mt-2 flex gap-2">

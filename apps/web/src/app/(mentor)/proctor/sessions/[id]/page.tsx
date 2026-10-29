@@ -110,6 +110,8 @@ const SCREEN_MESSAGE: Record<ScreenState, string> = {
 function ScreenViewer({ sessionId, candidateName }: { sessionId: string; candidateName: string }) {
   const [watching, setWatching] = useState(false);
   const [state, setState] = useState<ScreenState>("connecting");
+  // Browsers only play sound after a click, so the candidate's microphone starts muted.
+  const [listening, setListening] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -136,6 +138,9 @@ function ScreenViewer({ sessionId, candidateName }: { sessionId: string; candida
           {state === "live" && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" aria-hidden />}
           {candidateName}&apos;s screen · {SCREEN_MESSAGE[state]}
         </span>
+        <button type="button" onClick={() => { const v = videoRef.current; if (v) { v.muted = !v.muted; setListening(!v.muted); } }} aria-pressed={listening} className={`rounded-md px-2 py-1 font-semibold hover:bg-white/10 ${focusRing}`}>
+          {listening ? "Mute" : "Listen"}
+        </button>
         <button type="button" onClick={() => setWatching(false)} aria-label="Stop watching the screen" className={`rounded-md p-1 hover:bg-white/10 ${focusRing}`}>
           <X className="h-4 w-4" aria-hidden />
         </button>
@@ -163,18 +168,27 @@ function Workspace({ detail }: { detail: SessionDetail }) {
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [live, setLive] = useState(true);
   const [snapshot, setSnapshot] = useState<{ image: string; at: string } | null>(null);
+  const [browsing, setBrowsing] = useState(detail.browsing);
 
   useEffect(() => {
     if (session.status !== "LIVE") return;
     const off = subscribe("frame:snapshot", (e) => {
       if (e.sessionId === session.id) setSnapshot({ image: e.image, at: e.at });
     });
+    // Sites, AI tools and typed text appear the moment the candidate's app reports them.
+    const offBrowsing = subscribe("browsing:new", (e) => {
+      if (e.sessionId !== session.id) return;
+      setBrowsing((cur) => [...e.entries, ...cur]);
+      const ai = e.entries.find((x) => x.flaggedAi);
+      if (ai) toast({ tone: "error", title: ai.query ? `Typed on ${ai.title || ai.url}` : `Opened ${ai.title || ai.url}`, description: ai.query ?? ai.url });
+    });
     const leave = joinExam(session.examId);
     return () => {
       leave();
       off();
+      offBrowsing();
     };
-  }, [session.id, session.examId, session.status]);
+  }, [session.id, session.examId, session.status, toast]);
 
   const verdictOf = useCallback<VerdictOf>((v) => effectiveVerdict(v, reviews), [reviews]);
 
@@ -234,7 +248,7 @@ function Workspace({ detail }: { detail: SessionDetail }) {
     document.getElementById(`tab-${TABS[next].id}`)?.focus();
   };
 
-  const tabCount: Record<TabId, number> = { violations: violations.length, evidence: evidenceItems.length, browsing: detail.browsing.length };
+  const tabCount: Record<TabId, number> = { violations: violations.length, evidence: evidenceItems.length, browsing: browsing.length };
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6">
@@ -306,7 +320,7 @@ function Workspace({ detail }: { detail: SessionDetail }) {
               <EvidenceGallery items={evidenceItems} openId={lightboxId} onOpenIdChange={setLightboxId} onJumpToViolation={jumpToViolation} />
             </div>
             <div id="panel-browsing" role="tabpanel" aria-labelledby="tab-browsing" hidden={tab !== "browsing"}>
-              <BrowsingLogTable logs={detail.browsing} candidateName={candidate.name} />
+              <BrowsingLogTable logs={browsing} candidateName={candidate.name} />
             </div>
           </div>
         </section>
