@@ -33,7 +33,15 @@ export const VIOLATION_CODES = Object.keys(VIOLATION_META) as ViolationCode[];
 export const SEVERITIES: Severity[] = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
 export const SEVERITY_RANK: Record<Severity, number> = { LOW: 0, MEDIUM: 1, HIGH: 2, CRITICAL: 3 };
 
-export interface ExamSettings { shuffle: boolean; negativeMarking: boolean; allowedSites: string[]; maxWarnings: number; autoSubmit: boolean; audioMonitoring: boolean }
+export interface ExamSettings {
+  shuffle: boolean; negativeMarking: boolean; allowedSites: string[]; maxWarnings: number; autoSubmit: boolean; audioMonitoring: boolean;
+  /** Violations only flag to the proctor: no warnings to the candidate and no automatic submit. */
+  proctorOnly: boolean;
+  /** Questions are answered in order; a question cannot be revisited after Next. */
+  oneWay: boolean;
+  /** The candidate's microphone is streamed live to proctors watching the screen (never recorded). */
+  liveAudio: boolean;
+}
 export interface ExamExtras {
   category: string; description: string; instructions: string; lateEntryMin: number; checkInMin: number;
   negativeValue: number; allowCalculator: boolean; releaseResults: 'IMMEDIATE' | 'AFTER_REVIEW' | 'MANUAL';
@@ -45,7 +53,7 @@ export interface ViolationPolicy {
   autoSubmitFrom: Severity; autoSubmitOnCritical: boolean; riskFlagAt: number; cooldownSec: number;
 }
 
-export const DEFAULT_SETTINGS: ExamSettings = { shuffle: true, negativeMarking: false, allowedSites: [], maxWarnings: 2, autoSubmit: true, audioMonitoring: false };
+export const DEFAULT_SETTINGS: ExamSettings = { shuffle: true, negativeMarking: false, allowedSites: [], maxWarnings: 2, autoSubmit: true, audioMonitoring: false, proctorOnly: false, oneWay: false, liveAudio: false };
 export const DEFAULT_POLICY: ViolationPolicy = {
   weights: { LOW: 2, MEDIUM: 8, HIGH: 20, CRITICAL: 50 },
   maxWarnings: 2, warnFrom: 'MEDIUM', autoSubmit: true, autoSubmitFrom: 'HIGH', autoSubmitOnCritical: true, riskFlagAt: 60, cooldownSec: 30,

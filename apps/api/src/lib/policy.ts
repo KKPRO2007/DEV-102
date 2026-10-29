@@ -73,6 +73,8 @@ export async function recordViolation(input: RecordInput): Promise<RecordResult>
   let warnings = session.warnings;
   const rank = SEVERITY_RANK[severity];
   if (recent) outcome = 'SUPPRESSED';
+  // Proctor-only exams never warn the candidate or end the session; the proctor sees every flag.
+  else if (settings.proctorOnly) outcome = 'LOGGED';
   else if (policy.autoSubmit && settings.autoSubmit && policy.autoSubmitOnCritical && severity === 'CRITICAL') outcome = 'AUTO_SUBMIT';
   else if (rank >= SEVERITY_RANK[policy.warnFrom]) {
     if (warnings < maxWarnings) { warnings += 1; outcome = 'WARNING'; }

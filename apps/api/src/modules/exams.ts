@@ -27,6 +27,7 @@ const host = z.string().trim().toLowerCase().regex(/^[a-z0-9.-]+\.[a-z]{2,}$/, '
 const settingsSchema = z.object({
   shuffle: z.boolean(), negativeMarking: z.boolean(), allowedSites: z.array(host).max(50),
   maxWarnings: z.number().int().min(0).max(10), autoSubmit: z.boolean(), audioMonitoring: z.boolean(),
+  proctorOnly: z.boolean().default(false), oneWay: z.boolean().default(false), liveAudio: z.boolean().default(false),
 });
 const extrasSchema = z.object({
   category: z.string().max(80), description: z.string().max(2000), instructions: z.string().max(5000),

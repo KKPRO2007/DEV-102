@@ -103,10 +103,10 @@ export const realtime = {
   toSession(sessionId: string, event: string, payload: unknown): void {
     nsp?.to(`session:${sessionId}`).emit(event, payload);
   },
-  /** Webcam snapshots are throttled to one per 4 s per session to protect mentor bandwidth. */
+  /** Webcam snapshots reach proctors about once a second per session (the candidate app sends one per second). */
   snapshot(examId: string, sessionId: string, image: string): void {
     const now = Date.now();
-    if (now - (lastSnapshot.get(sessionId) ?? 0) < 4000) return;
+    if (now - (lastSnapshot.get(sessionId) ?? 0) < 900) return;
     lastSnapshot.set(sessionId, now);
     nsp?.to(`exam:${examId}`).emit('frame:snapshot', { sessionId, image, at: new Date(now).toISOString() });
   },

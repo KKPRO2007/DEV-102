@@ -34,34 +34,31 @@ def frames(monkeypatch):
     return run
 
 
-def test_one_frame_with_a_phone_is_not_enough(frames):
-    assert frames([PHONE]) == [[]]
+def test_one_frame_with_a_phone_is_enough(frames):
+    # Frames arrive every second, so a phone is reported on the first frame it appears in.
+    assert frames([PHONE]) == [["PHONE_DETECTED"]]
 
 
-def test_phone_in_two_frames_in_a_row_raises_phone_detected(frames):
-    assert frames([PHONE], [PHONE]) == [[], ["PHONE_DETECTED"]]
-
-
-def test_phone_detected_is_high_with_the_detector_confidence(frames, monkeypatch):
-    st = FaceState()
-    frames([PHONE], state=st)
+def test_phone_detected_is_high_with_the_detector_confidence(monkeypatch):
     facts = FrameFacts(faces=[FACE], brightness=120, contrast=40, objects=[PHONE])
     monkeypatch.setattr(vision, "analyze", lambda _img: facts)
-    violations, metrics = face_agent.analyze_frame(st, FRAME)
+    violations, metrics = face_agent.analyze_frame(FaceState(), FRAME)
     assert [(v.code, v.severity, v.confidence) for v in violations] == [("PHONE_DETECTED", "HIGH", 0.8)]
     assert metrics["phones"] == 1
 
 
-def test_a_gap_between_phone_frames_resets_the_count(frames):
+def test_with_a_two_frame_setting_a_gap_resets_the_count(frames, monkeypatch):
+    monkeypatch.setattr(face_agent, "settings", dataclasses.replace(face_agent.settings, phone_frames=2))
     assert frames([PHONE], [], [PHONE], [], [PHONE]) == [[], [], [], [], []]
+    assert frames([PHONE], [PHONE]) == [[], ["PHONE_DETECTED"]]
 
 
 def test_low_confidence_phones_are_ignored(frames):
     assert frames([WEAK_PHONE], [WEAK_PHONE], [WEAK_PHONE]) == [[], [], []]
 
 
-def test_large_book_in_three_frames_raises_notes_detected(frames):
-    assert frames([BIG_BOOK], [BIG_BOOK], [BIG_BOOK]) == [[], [], ["NOTES_DETECTED"]]
+def test_large_book_in_two_frames_raises_notes_detected(frames):
+    assert frames([BIG_BOOK], [BIG_BOOK]) == [[], ["NOTES_DETECTED"]]
 
 
 def test_small_books_such_as_a_shelf_behind_the_candidate_are_ignored(frames):
@@ -70,7 +67,7 @@ def test_small_books_such_as_a_shelf_behind_the_candidate_are_ignored(frames):
 
 def test_a_held_phone_is_reported_again_only_after_the_cooldown(frames):
     result = frames([PHONE], [PHONE], [PHONE], [PHONE])
-    assert result == [[], ["PHONE_DETECTED"], [], []]
+    assert result == [["PHONE_DETECTED"], [], [], []]
 
 
 def test_off_switch_skips_the_detector(monkeypatch):

@@ -26,9 +26,9 @@ class Settings:
     llm_base_url: str = os.getenv("LLM_BASE_URL", "https://api.anthropic.com")
     models_dir: Path = ROOT / "models"
 
-    # Rules. Frames arrive every few seconds, so timers accumulate across frames per session.
-    gaze_away_sec: float = _f("GAZE_AWAY_SEC", 6.0)
-    no_face_sec: float = _f("NO_FACE_SEC", 8.0)
+    # Rules. Webcam frames arrive every second, so timers accumulate across frames per session.
+    gaze_away_sec: float = _f("GAZE_AWAY_SEC", 2.0)
+    no_face_sec: float = _f("NO_FACE_SEC", 2.0)
     yaw_limit_deg: float = _f("YAW_LIMIT_DEG", 28.0)
     pitch_limit_deg: float = _f("PITCH_LIMIT_DEG", 22.0)
     iris_offset_limit: float = _f("IRIS_OFFSET_LIMIT", 0.32)
@@ -45,9 +45,9 @@ class Settings:
     # Objects in the webcam frame (MediaPipe EfficientDet-Lite0, COCO labels). OBJECT_DETECTION=0 turns it off.
     object_detection: bool = os.getenv("OBJECT_DETECTION", "1").lower() not in ("0", "false", "off")
     phone_min_score: float = _f("PHONE_MIN_SCORE", 0.5)
-    phone_frames: int = int(_f("PHONE_FRAMES", 2))
+    phone_frames: int = int(_f("PHONE_FRAMES", 1))
     notes_min_score: float = _f("NOTES_MIN_SCORE", 0.5)
-    notes_frames: int = int(_f("NOTES_FRAMES", 3))
+    notes_frames: int = int(_f("NOTES_FRAMES", 2))
     # A book must cover this share of the frame, so a bookshelf behind the candidate is ignored.
     notes_min_area: float = _f("NOTES_MIN_AREA", 0.04)
 

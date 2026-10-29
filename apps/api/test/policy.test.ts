@@ -196,4 +196,16 @@ describe('recordViolation with a configured threshold', () => {
     expect((await record('AI_QUERY_DETECTED')).outcome).toBe('WARNING');
     expect(db.session.status).toBe('LIVE');
   });
+
+  it('in proctor-only mode logs every event for the proctor but never warns the candidate or ends the exam', async () => {
+    setup({}, { proctorOnly: true });
+    vi.mocked(realtime.toSession).mockClear();
+    const outcomes = [];
+    for (const code of ['GAZE_AWAY', 'PHONE_DETECTED', 'AI_QUERY_DETECTED', 'MULTI_LOGIN'] as const) outcomes.push((await record(code)).outcome);
+    expect(outcomes).toEqual(['LOGGED', 'LOGGED', 'LOGGED', 'LOGGED']);
+    expect(db.session.status).toBe('LIVE');
+    expect(db.session.warnings).toBe(0);
+    expect(vi.mocked(realtime.toSession)).not.toHaveBeenCalled();
+    expect(vi.mocked(realtime.toExam)).toHaveBeenCalledWith('exam-1', 'violation:new', expect.objectContaining({ outcome: 'LOGGED' }));
+  });
 });
