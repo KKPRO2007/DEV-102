@@ -8,6 +8,7 @@
     "start": "node scripts/start.mjs",
     "start:web": "node scripts/start.mjs --no-desktop",
     "start:lan": "node scripts/start.mjs --lan",
+    "test-kit": "tsx scripts/test-kit.ts",
     "dev:web": "npm run dev -w apps/web",
     "dev:api": "npm run dev -w apps/api",
     "dev:desktop": "npm run dev -w apps/desktop",

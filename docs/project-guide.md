@@ -211,13 +211,14 @@ LIVE-01 has these exam settings on, and organizations can turn them on for any e
 3. Connect:
    - **Same Wi-Fi:** with `npm run start:lan`, pasting the emailed link into the app connects to your laptop by itself. Otherwise `npm run share` prints your laptop's address; on the friend's laptop press **Change** next to *Exam server* on the sign-in screen and type it. Windows asks once to allow Node.js through the firewall: allow it for private networks.
    - **Over the internet:** install cloudflared once (`winget install --id Cloudflare.cloudflared`), then `npm run share:tunnel`, and give your friend the printed `https://….trycloudflare.com` address.
-4. Website, Organization panel > LIVE-01 > Credentials:
+4. **Quick round without the website:** `npm run test-kit` prints 5 tester links and 1 proctor link on LIVE-01, all with the password `Test@2026`, and saves them to `.data/test-kit.txt`. Each link still works on one computer only. Running it again resets every tester (attempts, device locks, codes) and issues fresh links. Options: `-- --count 3`, `-- --emails a@gmail.com,b@gmail.com` (OTP emails for testers 1 and 2). Outside production the OTP also shows on the verification screen.
+5. Or, on the website, Organization panel > LIVE-01 > Credentials:
    - add your friend as a candidate and send the email; the join link and password are also under **Reveal & copy**
    - invite yourself under **Proctors**
    - every time a candidate's link is sent, the organization (the exam's creator) and every proctor invited to the exam get a copy with the same link and password
    - real emails: set `SMTP_USER` (your Gmail address) and `SMTP_PASS` (a Gmail app password from Google Account > Security > App passwords) in `.env`, keep `SMTP_HOST=smtp.gmail.com` and `SMTP_PORT=587`, and restart. Leave `MAIL_FROM` blank to send from `SMTP_USER` (Gmail rejects an unverified From address). Without SMTP, emails go to the dev outbox (Ctrl+Shift+D on the website); in production (`NODE_ENV=production`) they fail instead and show as FAILED in the email log.
-5. Your friend pastes the link, enters the password, and passes the system check, face and OTP, then consent.
-6. You open the Proctor console on the website or desktop and pick the session. You see:
+6. Your friend pastes the link, enters the password, and passes the system check, face and OTP, then consent.
+7. You open the Proctor console on the website or desktop and pick the session. You see:
    - his webcam about once a second
    - **Watch screen** to see his screen live, then **Listen** to hear him
    - every site and AI tool he opens and the text he types or pastes, the moment it happens

@@ -75,6 +75,7 @@ bcrypt (cost 12) passwords; lockout after 5 failures; OTPs HMAC-hashed with a 5-
 | `npm start` | Everything (database, API, agent, web, desktop) |
 | `npm run smoke` | End-to-end API test of the admin, candidate and mentor flows (needs the API running and the demo data: `npm run db:seed:demo`) |
 | `npm run start:lan` | Same as `npm start`, but join links and the website use this laptop's Wi-Fi address for a friend's laptop |
+| `npm run test-kit` | Development only: 5 tester links + 1 proctor link on LIVE-01, password `Test@2026`; rerun to reset |
 | `npm run share` | Prints this laptop's Wi-Fi address for a candidate's app on another laptop |
 | `npm run share:tunnel` | Same over the internet through a free Cloudflare quick tunnel (needs `cloudflared`) |
 | `npm run db:seed:demo` | Full demo dataset instead of the default live-test data |
