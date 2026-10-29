@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { AlertTriangle, ArrowLeft, ArrowRight, Check, CheckCircle2, CloudOff, Eraser, Flag, Globe, Keyboard, Loader2, Lock, RefreshCw, Send, WifiOff, X } from 'lucide-react'
 import { api, type ExamPaper, type ViolationResult } from '../lib/api'
 import { captureWindow, startLive } from '../lib/live'
+import { watchAway } from '../lib/away'
 import { getProctor } from '../lib/proctorMock'
 import type { BrowsingLog, Question, Severity, ViolationCode } from '../lib/types'
 import QuestionPalette, { type PaletteItem } from '../components/QuestionPalette'
@@ -436,10 +437,12 @@ export default function Exam({ examId, userId, onSubmitted }: ExamProps) {
       },
       onServerReachable: setServerReachable,
     }, { audioMonitoring: paper.exam.settings.audioMonitoring, liveAudio: Boolean(paper.exam.settings.liveAudio) })
+    const stopAway = watchAway(paper.sessionId)
     const onSimulate = (e: Event) => report((e as CustomEvent<{ code: ViolationCode }>).detail.code)
     window.addEventListener('proctor:report', onSimulate)
     return () => {
       stop()
+      stopAway()
       window.removeEventListener('proctor:report', onSimulate)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

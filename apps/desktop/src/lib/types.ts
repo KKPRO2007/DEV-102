@@ -295,6 +295,8 @@ export interface NativeBridge extends Omit<ProctorApi, 'screen' | 'system'> {
   deviceId(): Promise<string>;
   /** `capture` returns a JPEG data URL of the exam window, sandbox tabs included, or null. */
   window: ProctorApi['window'] & { capture(): Promise<string | null> };
+  /** Titles of other programs' visible windows (Windows only); a browser's title is its active tab. */
+  windowTitles(): Promise<{ app: string; title: string }[]>;
   system: { closeApps(ids: string[]): Promise<string[]> };
   guards: { start(): Promise<void>; stop(): Promise<void> };
   sandbox: { setPolicy(allowedSites: string[]): Promise<void> };

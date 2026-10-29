@@ -134,10 +134,11 @@ export const api = {
   },
 
   /** Returns the server's policy decision, or null when offline (the event is queued). */
-  async reportViolation(input: { sessionId: string; code: ViolationCode; message?: string; at: string; [k: string]: unknown }): Promise<ViolationResult | null> {
+  /** `screenshot` is evidence for a live event only; the offline queue keeps the event without it. */
+  async reportViolation(input: { sessionId: string; code: ViolationCode; message?: string; at: string; screenshot?: string; [k: string]: unknown }): Promise<ViolationResult | null> {
     const id = sid(input.sessionId);
     try {
-      return await post<ViolationResult>('/proctoring/events', { sessionId: id, code: input.code, message: input.message, at: input.at });
+      return await post<ViolationResult>('/proctoring/events', { sessionId: id, code: input.code, message: input.message, at: input.at, ...(input.screenshot ? { screenshot: input.screenshot } : {}) });
     } catch (e) {
       if (isNetwork(e)) await enqueue(id, { kind: 'event', body: { code: input.code, message: input.message, at: input.at } });
       return null;

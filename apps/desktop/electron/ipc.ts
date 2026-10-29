@@ -1,6 +1,6 @@
 import { BrowserWindow, clipboard, ipcMain, type IpcMainInvokeEvent } from 'electron';
 import type { ProctorEvent } from '../src/lib/types';
-import { GuardMonitor, closeProcess, detectVm, deviceFingerprint, displays, scanProcesses } from './security/guards';
+import { GuardMonitor, closeProcess, detectVm, deviceFingerprint, displays, scanProcesses, windowTitles } from './security/guards';
 import type { Kiosk } from './security/kiosk';
 import { setPolicy } from './browser-sandbox/sandbox';
 import { storeDel, storeGet, storeSet } from './secure-store';
@@ -58,6 +58,7 @@ export function registerIpc(getWin: () => BrowserWindow | null, getKiosk: () => 
   });
   handle(CH.deviceId, () => deviceFingerprint());
   handle(CH.scanProcesses, () => scanProcesses());
+  handle(CH.windowTitles, () => windowTitles());
   handle(CH.closeProcess, (pid: unknown) => (Number.isInteger(pid) && (pid as number) > 4 ? closeProcess(pid as number) : false));
   handle(CH.closeApps, async (ids: unknown) => {
     if (!Array.isArray(ids)) return [];

@@ -44,10 +44,15 @@ class Settings:
 
     # Objects in the webcam frame (MediaPipe EfficientDet-Lite0, COCO labels). OBJECT_DETECTION=0 turns it off.
     object_detection: bool = os.getenv("OBJECT_DETECTION", "1").lower() not in ("0", "false", "off")
-    phone_min_score: float = _f("PHONE_MIN_SCORE", 0.5)
+    # A phone held up to the webcam often scores 0.35-0.45 with this model; the size floor drops
+    # watch- and button-sized misreads that score as high.
+    phone_min_score: float = _f("PHONE_MIN_SCORE", 0.35)
+    phone_min_area: float = _f("PHONE_MIN_AREA", 0.02)
     phone_frames: int = int(_f("PHONE_FRAMES", 1))
-    notes_min_score: float = _f("NOTES_MIN_SCORE", 0.5)
+    notes_min_score: float = _f("NOTES_MIN_SCORE", 0.4)
     notes_frames: int = int(_f("NOTES_FRAMES", 2))
+    # Objects count when seen in enough of this many recent frames, so one missed frame does not reset them.
+    object_window: int = int(_f("OBJECT_WINDOW", 3))
     # A book must cover this share of the frame, so a bookshelf behind the candidate is ignored.
     notes_min_area: float = _f("NOTES_MIN_AREA", 0.04)
 

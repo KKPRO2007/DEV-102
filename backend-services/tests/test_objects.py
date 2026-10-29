@@ -14,7 +14,10 @@ from vision import DetectedObject, Face, FrameFacts
 FRAME = np.zeros((480, 640, 3), dtype=np.uint8)
 FACE = Face(box=(220, 120, 200, 200), score=0.95)
 PHONE = DetectedObject(label="cell phone", score=0.8, area=0.02)
-WEAK_PHONE = DetectedObject(label="cell phone", score=0.35, area=0.02)
+WEAK_PHONE = DetectedObject(label="cell phone", score=0.3, area=0.05)
+# Scores seen on real test frames: a phone held to the camera at 0.41, a wristwatch misread at 0.37.
+HELD_PHONE = DetectedObject(label="cell phone", score=0.41, area=0.11)
+WATCH = DetectedObject(label="cell phone", score=0.37, area=0.01)
 BIG_BOOK = DetectedObject(label="book", score=0.7, area=0.12)
 SHELF_BOOK = DetectedObject(label="book", score=0.9, area=0.01)
 
@@ -47,10 +50,18 @@ def test_phone_detected_is_high_with_the_detector_confidence(monkeypatch):
     assert metrics["phones"] == 1
 
 
-def test_with_a_two_frame_setting_a_gap_resets_the_count(frames, monkeypatch):
+def test_with_a_two_frame_setting_two_of_the_last_three_frames_count(frames, monkeypatch):
     monkeypatch.setattr(face_agent, "settings", dataclasses.replace(face_agent.settings, phone_frames=2))
-    assert frames([PHONE], [], [PHONE], [], [PHONE]) == [[], [], [], [], []]
-    assert frames([PHONE], [PHONE]) == [[], ["PHONE_DETECTED"]]
+    assert frames([PHONE], [], [PHONE]) == [[], [], ["PHONE_DETECTED"]]
+    assert frames([PHONE], [], [], [PHONE], [], [], [PHONE]) == [[], [], [], [], [], [], []]
+
+
+def test_a_phone_held_to_the_camera_at_a_modest_score_is_caught(frames):
+    assert frames([HELD_PHONE]) == [["PHONE_DETECTED"]]
+
+
+def test_a_tiny_phone_shaped_misread_is_ignored(frames):
+    assert frames([WATCH], [WATCH], [WATCH]) == [[], [], []]
 
 
 def test_low_confidence_phones_are_ignored(frames):
@@ -59,6 +70,10 @@ def test_low_confidence_phones_are_ignored(frames):
 
 def test_large_book_in_two_frames_raises_notes_detected(frames):
     assert frames([BIG_BOOK], [BIG_BOOK]) == [[], ["NOTES_DETECTED"]]
+
+
+def test_a_book_missed_in_one_frame_is_still_caught(frames):
+    assert frames([BIG_BOOK], [], [BIG_BOOK]) == [[], [], ["NOTES_DETECTED"]]
 
 
 def test_small_books_such_as_a_shelf_behind_the_candidate_are_ignored(frames):

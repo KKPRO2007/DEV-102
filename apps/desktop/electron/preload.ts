@@ -26,6 +26,7 @@ const bridge: NativeBridge = {
   },
   system: { closeApps: (ids) => invoke<string[]>(CH.closeApps, ids) },
   listBlacklistedApps: () => invoke<DetectedApp[]>(CH.scanProcesses),
+  windowTitles: () => invoke<{ app: string; title: string }[]>(CH.windowTitles),
   closeApp: async (pid) => {
     await invoke<boolean>(CH.closeProcess, pid);
   },

@@ -4,6 +4,7 @@ or notes held in view."""
 from __future__ import annotations
 
 import time
+from collections import deque
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -18,10 +19,18 @@ class FaceState:
     absent_since: float | None = None
     away_since: float | None = None
     mismatch_streak: int = 0
-    phone_streak: int = 0
-    notes_streak: int = 0
+    phone_hits: deque[bool] = field(default_factory=deque)
+    notes_hits: deque[bool] = field(default_factory=deque)
     reference: np.ndarray | None = None
     last_emit: dict[str, float] = field(default_factory=dict)
+
+
+def _record(hits: deque[bool], hit: bool) -> int:
+    """Adds this frame to the recent-frames window and returns how many of them had the object."""
+    hits.append(hit)
+    while len(hits) > max(1, settings.object_window):
+        hits.popleft()
+    return sum(hits)
 
 
 def _emit(state: FaceState, out: list[Violation], code: str, severity: str, confidence: float, message: str) -> None:
@@ -83,18 +92,21 @@ def analyze_frame(state: FaceState, img: np.ndarray) -> tuple[list[Violation], d
             if state.mismatch_streak >= settings.mismatch_frames:
                 _emit(state, out, "FACE_MISMATCH", "CRITICAL", 1 - max(0.0, similarity), f"The face on camera does not match the verified photo (similarity {similarity:.2f}, threshold {settings.match_threshold:.2f}).")
 
-    # Objects must be seen in consecutive frames, so one misread frame never counts.
-    phone = max((o.score for o in facts.objects if o.label == "cell phone" and o.score >= settings.phone_min_score), default=None)
-    state.phone_streak = state.phone_streak + 1 if phone is not None else 0
-    if phone is not None and state.phone_streak >= settings.phone_frames:
-        _emit(state, out, "PHONE_DETECTED", "HIGH", phone, f"A phone was visible on camera in {state.phone_streak} frames in a row (confidence {phone:.2f}).")
+    # Objects must be seen in enough recent frames, so one misread frame never counts and one missed frame never resets.
+    phone = max(
+        (o.score for o in facts.objects if o.label == "cell phone" and o.score >= settings.phone_min_score and o.area >= settings.phone_min_area),
+        default=None,
+    )
+    seen = _record(state.phone_hits, phone is not None)
+    if phone is not None and seen >= settings.phone_frames:
+        _emit(state, out, "PHONE_DETECTED", "HIGH", phone, f"A phone was visible on camera in {seen} of the last {len(state.phone_hits)} frames (confidence {phone:.2f}).")
     notes = max(
         (o.score for o in facts.objects if o.label == "book" and o.score >= settings.notes_min_score and o.area >= settings.notes_min_area),
         default=None,
     )
-    state.notes_streak = state.notes_streak + 1 if notes is not None else 0
-    if notes is not None and state.notes_streak >= settings.notes_frames:
-        _emit(state, out, "NOTES_DETECTED", "MEDIUM", notes, f"A book or notes were visible on camera in {state.notes_streak} frames in a row (confidence {notes:.2f}).")
+    seen = _record(state.notes_hits, notes is not None)
+    if notes is not None and seen >= settings.notes_frames:
+        _emit(state, out, "NOTES_DETECTED", "MEDIUM", notes, f"A book or notes were visible on camera in {seen} of the last {len(state.notes_hits)} frames (confidence {notes:.2f}).")
 
     metrics = {
         "faces": n, "brightness": round(facts.brightness, 1), "contrast": round(facts.contrast, 1), "blocked": facts.blocked,

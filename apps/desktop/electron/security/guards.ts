@@ -1,5 +1,6 @@
 import { clipboard, screen } from 'electron';
 import si from 'systeminformation';
+import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import type { DetectedApp, DisplayInfo, ProctorEvent, ViolationCode } from '../../src/lib/types';
 
@@ -44,6 +45,29 @@ export async function scanProcesses(): Promise<DetectedApp[]> {
     if (hit && !seen.has(key)) seen.set(key, { id: `app-${key}`, name: hit.name, category: hit.category, pid: p.pid });
   }
   return [...seen.values()];
+}
+
+const TITLES_PS = "Get-Process | Where-Object { $_.MainWindowTitle } | ForEach-Object { $_.ProcessName + '|' + $_.MainWindowTitle }";
+
+/**
+ * Titles of the visible windows of other programs (Windows only). A browser's title is its active
+ * tab, e.g. "ChatGPT - Google Chrome", so proctors learn which AI tool is open outside the exam.
+ */
+export function windowTitles(): Promise<{ app: string; title: string }[]> {
+  if (process.platform !== 'win32') return Promise.resolve([]);
+  return new Promise((resolve) => {
+    execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', TITLES_PS], { timeout: 4000, windowsHide: true, maxBuffer: 1 << 20 }, (err, stdout) => {
+      if (err) return resolve([]);
+      const own = process.execPath.toLowerCase();
+      resolve(stdout.split(/\r?\n/).flatMap((line) => {
+        const at = line.indexOf('|');
+        if (at < 1) return [];
+        const app = line.slice(0, at).trim();
+        if ((relaxed && DEV_TOOLS.has(app.toLowerCase())) || own.includes(`${app.toLowerCase()}.exe`)) return [];
+        return [{ app, title: line.slice(at + 1).trim().slice(0, 200) }];
+      }));
+    });
+  });
 }
 
 /** Ends a blacklisted process. Only called after the candidate presses Close in the system check. */

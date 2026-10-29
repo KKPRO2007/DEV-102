@@ -233,6 +233,23 @@ const inAppCapture = (): boolean => Boolean(window.proctor && !window.proctor.re
 /** A JPEG data URL of the exam window (sandbox tabs included), or null outside the desktop app. */
 export const captureWindow = (): Promise<string | null> => window.proctor?.window.capture().catch(() => null) ?? Promise.resolve(null);
 
+let realScreen: HTMLVideoElement | null = null;
+/** A picture of the real screen: other programs show, the exam window is black in the installed app. */
+export async function grabScreen(width: number, quality: number): Promise<string | null> {
+  const stream = getScreenStream();
+  if (!stream) return null;
+  realScreen ??= Object.assign(document.createElement('video'), { muted: true });
+  if (realScreen.srcObject !== stream) {
+    realScreen.srcObject = stream;
+    await realScreen.play().catch(() => undefined);
+  }
+  return grab(realScreen, width, quality);
+}
+
+/** What the candidate is looking at: the exam window (sandbox tabs included) while it has focus, else the real screen. */
+const viewShot = (width: number, quality: number): Promise<string | null> =>
+  inAppCapture() && document.hasFocus() ? captureWindow() : grabScreen(width, quality);
+
 /** A live video of the exam window, redrawn from captures while one proctor watches. */
 function windowStream(): { stream: MediaStream; stop: () => void } {
   const canvas = document.createElement('canvas');
@@ -244,7 +261,7 @@ function windowStream(): { stream: MediaStream; stop: () => void } {
   void (async () => {
     const img = new Image();
     while (running) {
-      const frame = await captureWindow();
+      const frame = await viewShot(1280, 0.6);
       if (frame && ctx && running) {
         img.src = frame;
         await img.decode().catch(() => undefined);
@@ -411,8 +428,6 @@ function grab(video: HTMLVideoElement, width: number, quality: number): string |
 function startFrameUploads(sessionId: string): () => void {
   const camVideo = document.createElement('video');
   camVideo.muted = true;
-  const screenVideo = document.createElement('video');
-  screenVideo.muted = true;
 
   const attachPreviewCamera = () => {
     const preview = document.querySelector<HTMLVideoElement>('[data-proctor-camera]');
@@ -450,26 +465,14 @@ function startFrameUploads(sessionId: string): () => void {
   }, 1000);
   const backfill = window.setInterval(() => void sendNextFrame(), 1000);
 
-  /** The shared screen, or the app's own window where the installed app hides it from screen capture. */
-  const screenShot = async (width: number, quality: number): Promise<string | null> => {
-    if (inAppCapture()) return captureWindow();
-    const stream = getScreenStream();
-    if (!stream) return null;
-    if (screenVideo.srcObject !== stream) {
-      screenVideo.srcObject = stream;
-      await screenVideo.play().catch(() => undefined);
-    }
-    return grab(screenVideo, width, quality);
-  };
-
   let screenTick = 0;
   const screenTimer = window.setInterval(() => {
     screenTick += 1;
     if (isOffline()) {
-      if (screenTick % 3 === 0) void screenShot(960, 0.5).then((kept) => { if (kept) void enqueueFrame(sessionId, 'screen', kept); });
+      if (screenTick % 3 === 0) void viewShot(960, 0.5).then((kept) => { if (kept) void enqueueFrame(sessionId, 'screen', kept); });
       return;
     }
-    void screenShot(1280, 0.6).then((frame) => {
+    void viewShot(1280, 0.6).then((frame) => {
       if (frame) void post('/proctoring/screen', { sessionId, image: frame }).catch(keepOnNetworkError('screen', frame));
     });
   }, 20_000);
@@ -479,7 +482,6 @@ function startFrameUploads(sessionId: string): () => void {
     window.clearInterval(backfill);
     window.clearInterval(screenTimer);
     camVideo.srcObject = null;
-    screenVideo.srcObject = null;
   };
 }
 

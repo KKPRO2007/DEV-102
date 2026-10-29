@@ -7,6 +7,7 @@ export const CH = {
   winCapture: 'proctor:window:capture',
   deviceId: 'proctor:device:id',
   scanProcesses: 'proctor:system:scan-processes',
+  windowTitles: 'proctor:system:window-titles',
   closeProcess: 'proctor:system:close-process',
   closeApps: 'proctor:system:close-apps',
   displays: 'proctor:system:get-displays',

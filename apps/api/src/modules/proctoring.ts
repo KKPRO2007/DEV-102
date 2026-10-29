@@ -16,6 +16,8 @@ const code = z.enum(VIOLATION_CODES as [string, ...string[]]).transform((c) => c
 const eventSchema = z.object({
   code, message: z.string().max(500).optional(), at: z.string().datetime({ offset: true }).optional(), confidence: z.number().min(0).max(1).optional(),
   source: z.enum(['client', 'native']).default('client'),
+  /** A picture of the screen taken with the event (e.g. while away from the exam window), kept as its evidence. */
+  screenshot: z.string().min(100).max(4_000_000).optional(),
 });
 
 /** Sessions that already sent the reference photo to the agent (the agent caches the embedding). */
@@ -39,7 +41,9 @@ proctoringRouter.post('/events', ...candidateOnly, limits.ingest, handle(async (
   const results: RecordResult[] = [];
   for (const e of events) {
     const at = e.at ? new Date(Math.min(Date.parse(e.at), Date.now())) : undefined;
-    const r = await recordViolation({ sessionId: s.id, code: e.code, ...(e.message ? { message: e.message } : {}), source: e.source, ...(e.confidence !== undefined ? { confidence: e.confidence } : {}), ...(at ? { at } : {}) });
+    const shot = e.screenshot ? decodeImage(e.screenshot) : null;
+    const evidenceId = shot ? await saveEvidence(s.id, 'screen', shot) : undefined;
+    const r = await recordViolation({ sessionId: s.id, code: e.code, ...(e.message ? { message: e.message } : {}), source: e.source, ...(e.confidence !== undefined ? { confidence: e.confidence } : {}), ...(at ? { at } : {}), ...(evidenceId ? { evidenceId } : {}) });
     results.push(r);
     if (r.status !== 'LIVE') break;
   }

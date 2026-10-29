@@ -89,3 +89,21 @@ describe('screenshots of AI tools', () => {
     expect(call('AI_QUERY_DETECTED')).not.toHaveProperty('evidenceId');
   });
 });
+
+describe('screenshots taken while away from the exam window', () => {
+  const event = (body: Record<string, unknown>) =>
+    fetch(`${base}/proctoring/events`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'sess-1', ...body }) });
+
+  it('stores the screenshot as evidence of the event, with the AI tool named', async () => {
+    const message = 'ChatGPT open outside the exam (chrome: "ChatGPT - Google Chrome")';
+    expect((await event({ code: 'AI_SITE_OPENED', message, screenshot: SHOT })).status).toBe(200);
+    expect(mocks.saveEvidence).toHaveBeenCalledOnce();
+    expect(call('AI_SITE_OPENED')).toMatchObject({ evidenceId: 'ev-1', message });
+  });
+
+  it('records an event without a screenshot as before', async () => {
+    await event({ code: 'WINDOW_BLUR', message: 'The exam window lost focus for 3 seconds.' });
+    expect(mocks.saveEvidence).not.toHaveBeenCalled();
+    expect(call('WINDOW_BLUR')).not.toHaveProperty('evidenceId');
+  });
+});
