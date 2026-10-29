@@ -76,6 +76,32 @@ export default function CandidatesPage() {
     }
   }, [routeId])
 
+  useEffect(() => {
+    let alive = true
+    const refresh = async () => {
+      try {
+        const page = await listCandidates({ examId: routeId, pageSize: 200, sort: 'userId' })
+        if (!alive) return
+        // Discard browser-cached passwords so Reveal always fetches the current shared credential.
+        setRows((prev) => page.items.map((c) => {
+          const old = prev.find((row) => row.id === c.id)
+          const invite = c.invite
+          return {
+            id: c.id, name: c.name, email: c.email, userId: c.userId, password: '',
+            status: c.emailStatus === 'SENT' ? 'sent' : c.emailStatus === 'FAILED' ? 'failed' : 'pending',
+            ...(invite ? { invite } : {}),
+            ...(old?.invite?.id === invite?.id && old.outbox ? { outbox: true } : {}),
+          }
+        }))
+      } catch {
+        // Keep the last good view if a background refresh cannot reach the API.
+      }
+    }
+    const timer = window.setInterval(() => void refresh(), 8_000)
+    window.addEventListener('focus', refresh)
+    return () => { alive = false; window.clearInterval(timer); window.removeEventListener('focus', refresh) }
+  }, [routeId])
+
   const startLabel = startTime ? new Date(startTime).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'the scheduled time'
 
   const setStatus = useCallback((id: string, status: CredentialRow['status'], error?: string) => {
@@ -193,7 +219,7 @@ export default function CandidatesPage() {
         <div className="relative">
           <p className="text-xs font-medium text-muted">Exam {routeId}</p>
           <h1 className="font-heading text-2xl font-semibold text-ink">Candidates &amp; credentials</h1>
-          <p className="text-sm text-muted">Import candidates and proctors, then email each one a personal exam link and password.</p>
+          <p className="text-sm text-muted">Import candidates and proctors, then email each one a personal exam link and password. Admin updates refresh every 8 seconds.</p>
           {rows.length > 0 && (
             <div className="mt-4 flex items-center gap-3">
               <div className="h-2 w-48 overflow-hidden rounded-full bg-slate-100" role="progressbar" aria-valuemin={0} aria-valuemax={rows.length} aria-valuenow={sentCount} aria-label="Credentials emailed">

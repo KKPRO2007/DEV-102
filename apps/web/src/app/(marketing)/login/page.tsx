@@ -1,6 +1,6 @@
 'use client'
 
-import { FormEvent, useState } from 'react'
+import { FormEvent, Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { AlertCircle, ArrowRight, Loader2, ShieldCheck } from 'lucide-react'
 import { BrandMark } from '@/components/layout/BrandMark'
@@ -16,7 +16,7 @@ const ROLE_LABELS: Record<LoginRole, string> = {
   admin: 'Organization',
 }
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter()
   const params = useSearchParams()
   const setUser = useSession((state) => state.setUser)
@@ -121,4 +121,8 @@ export default function LoginPage() {
       </div>
     </main>
   )
+}
+
+export default function LoginPage() {
+  return <Suspense fallback={<main className="grid min-h-[calc(100vh-5rem)] place-items-center bg-[#050b1a] text-white">Loading sign in…</main>}><LoginContent /></Suspense>
 }

@@ -212,6 +212,7 @@ model Candidate {
 model Invite {
   id          String     @id @default(cuid())
   tokenHash   String     @unique
+  tokenCipher String?
   examId      String
   role        Role
   candidateId String?

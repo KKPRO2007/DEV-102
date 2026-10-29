@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, Ban, Check, CheckCircle2, Clock, Copy, Download, KeyRound, Loader2, RotateCw, Send } from 'lucide-react'
 import type { InviteStatus } from '@/lib/types'
+import { getInviteLink } from '@/lib/api'
 import PasswordCell from './PasswordCell'
 
 export type SendStatus = 'pending' | 'queued' | 'sending' | 'sent' | 'failed'
@@ -87,6 +88,25 @@ function CopyButton({ value, label }: { value: string; label: string }) {
       {done ? <Check className="h-3.5 w-3.5 text-success" aria-hidden /> : <Copy className="h-3.5 w-3.5" aria-hidden />}
     </button>
   )
+}
+
+function CopyInviteLinkButton({ inviteId, candidateName }: { inviteId: string; candidateName: string }) {
+  const [state, setState] = useState<'idle' | 'loading' | 'copied' | 'error'>('idle')
+  const copy = async () => {
+    setState('loading')
+    try {
+      const { link } = await getInviteLink(inviteId)
+      await navigator.clipboard.writeText(link)
+      setState('copied')
+      window.setTimeout(() => setState('idle'), 1500)
+    } catch {
+      setState('error')
+      window.setTimeout(() => setState('idle'), 2500)
+    }
+  }
+  return <button type="button" onClick={() => void copy()} disabled={state === 'loading'} className="ml-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-primary hover:bg-soft disabled:opacity-50" aria-label={`Copy ${candidateName}'s exam join link`}>
+    {state === 'loading' ? 'Loading…' : state === 'copied' ? 'Copied' : state === 'error' ? 'Unavailable' : 'Copy link'}
+  </button>
 }
 
 const csvCell = (v: string, guard = false) => {
@@ -189,7 +209,7 @@ export default function CredentialsTable({ rows, examId, busy = false, onResend,
                     <td className="px-4 py-2.5">
                       <StatusBadge status={r.status} />
                       {r.status === 'sent' && r.outbox && <p className="mt-1 text-[11px] text-amber-700">Saved to local dev outbox</p>}
-                      {r.inviteLink && <p className="mt-1 flex items-center gap-1 text-[11px] text-primary"><span>Local exam link</span><CopyButton value={r.inviteLink} label={`${r.name}'s local exam link`} /></p>}
+                      {r.invite && (r.invite.status === 'PENDING' || r.invite.status === 'USED') && <p className="mt-1 flex items-center gap-1 text-[11px] text-primary"><span>Join link</span><CopyInviteLinkButton inviteId={r.invite.id} candidateName={r.name} /></p>}
                       {r.status === 'failed' && r.error && <p className="mt-1 max-w-[12rem] truncate text-[11px] text-danger" title={r.error}>{r.error}</p>}
                       {r.invite && <p className={`mt-1 text-[11px] ${LINK_LABEL[r.invite.status][1]}`}>{LINK_LABEL[r.invite.status][0]}{r.invite.deviceBound ? ' · device locked' : ''}</p>}
                     </td>

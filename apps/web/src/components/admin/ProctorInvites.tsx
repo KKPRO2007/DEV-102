@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { AlertCircle, Ban, Check, Copy, Loader2, RotateCw, ShieldCheck, UserPlus } from 'lucide-react'
-import { inviteProctor, listProctors, lookupProctorEmail, resendInvite, resetProctorPassword, revealProctorPassword, revokeInvite, type ProctorInvite, type ProctorProfileLookup } from '@/lib/api'
+import { getInviteLink, inviteProctor, listProctors, lookupProctorEmail, resendInvite, resetProctorPassword, revealProctorPassword, revokeInvite, type ProctorInvite, type ProctorProfileLookup } from '@/lib/api'
 import PasswordCell from './PasswordCell'
 import type { InviteStatus } from '@/lib/types'
 
@@ -34,6 +34,7 @@ export default function ProctorInvites({ examId }: { examId: string }) {
   const load = useCallback(async () => {
     try {
       setRows(await listProctors(examId))
+      setKnown({})
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load proctors.')
     } finally {
@@ -43,6 +44,13 @@ export default function ProctorInvites({ examId }: { examId: string }) {
 
   useEffect(() => {
     void load()
+  }, [load])
+
+  useEffect(() => {
+    const refresh = () => void load()
+    const timer = window.setInterval(refresh, 8_000)
+    window.addEventListener('focus', refresh)
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', refresh) }
   }, [load])
 
   const act = async (key: string, fn: () => Promise<string>) => {
@@ -109,7 +117,7 @@ export default function ProctorInvites({ examId }: { examId: string }) {
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-700"><ShieldCheck className="h-4 w-4" aria-hidden /></span>
         <div>
           <h2 className="font-heading text-base font-semibold text-ink">Proctors</h2>
-          <p className="text-xs text-muted">Each proctor gets a personal link for this exam. They paste it in the desktop app, then verify their face and an email code.</p>
+          <p className="text-xs text-muted">Each proctor gets a personal link for this exam. Admin updates refresh every 8 seconds. Paste the link in the desktop app, then verify face and email.</p>
         </div>
       </div>
 
@@ -182,6 +190,7 @@ export default function ProctorInvites({ examId }: { examId: string }) {
                     <button type="button" disabled={busy !== null} onClick={() => void act(r.inviteId, async () => { const sent = await resendInvite(r.inviteId); setDevLink(sent.devLink ?? null); if (sent.password) setKnown((k) => ({ ...k, [sent.inviteId]: sent.password as string })); return sent.outbox ? `Saved a new local link for ${r.name}; copy it above and paste it into the desktop app.` : `New link email accepted by the mail server for ${r.name}. The previous link no longer works.` })} className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs font-medium text-primary hover:bg-soft focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50" aria-label={`Resend link to ${r.name}`}>
                       <RotateCw className="h-3 w-3" aria-hidden /> Resend
                     </button>
+                    {(r.status === 'PENDING' || r.status === 'USED') && <button type="button" disabled={busy !== null} onClick={() => void act(`copy-${r.inviteId}`, async () => { const { link } = await getInviteLink(r.inviteId); await navigator.clipboard.writeText(link); return `Copied the current join link for ${r.name}.` })} className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs font-medium text-primary hover:bg-soft focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50" aria-label={`Copy join link for ${r.name}`}><Copy className="h-3 w-3" aria-hidden /> Copy link</button>}
                     {(r.status === 'PENDING' || r.status === 'USED') && (
                       <button type="button" disabled={busy !== null} onClick={() => void act(r.inviteId, async () => { await revokeInvite(r.inviteId); return `${r.name} can no longer proctor this exam.` })} className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs font-medium text-danger hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50" aria-label={`Revoke link for ${r.name}`}>
                         <Ban className="h-3 w-3" aria-hidden /> Revoke

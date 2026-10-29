@@ -21,7 +21,7 @@ export async function issueInvite(input: { examId: string; endsAt: Date; role: E
   const token = randomToken(24);
   const [, invite] = await prisma.$transaction([
     prisma.invite.updateMany({ where: { examId: input.examId, ...owner, revokedAt: null }, data: { revokedAt: new Date() } }),
-    prisma.invite.create({ data: { tokenHash: sha256(token), examId: input.examId, role: input.role, email: input.email, expiresAt: input.endsAt, ...owner } }),
+    prisma.invite.create({ data: { tokenHash: sha256(token), tokenCipher: encrypt(token, config.JWT_SECRET), examId: input.examId, role: input.role, email: input.email, expiresAt: input.endsAt, ...owner } }),
   ]);
   return { id: invite.id, link: inviteLink(token) };
 }
@@ -65,6 +65,15 @@ invitesRouter.get('/exams/:id/proctors/lookup', ...adminOnly, handle(async (req)
   if (user.deletedAt || user.role !== 'MENTOR') return { profile: null, alreadyInvited: false, emailUnavailable: true };
   const activeInvite = await prisma.invite.findFirst({ where: { examId: String(req.params.id), role: 'MENTOR', userId: user.id, revokedAt: null } });
   return { profile: { name: user.name, email: user.email }, alreadyInvited: Boolean(activeInvite), emailUnavailable: false };
+}));
+
+invitesRouter.get('/invites/:id/link', ...adminOnly, handle(async (req) => {
+  const inv = must(await prisma.invite.findUnique({ where: { id: String(req.params.id) } }), 'Invite');
+  if (inv.revokedAt || inv.expiresAt <= new Date()) fail('CONFLICT', 'This invite link is no longer active. Resend the invite to create a new link.');
+  const token = inv.tokenCipher ? decrypt(inv.tokenCipher, config.JWT_SECRET) : null;
+  if (token === null) return fail('CONFLICT', 'This older invite link cannot be recovered. Resend the invite to create a new link.');
+  audit(req, 'invite.reveal_link', inv.id);
+  return { link: inviteLink(token) };
 }));
 
 /** Invites a proctor by email. A mentor account is created when none exists and its temporary password goes in the same email. */

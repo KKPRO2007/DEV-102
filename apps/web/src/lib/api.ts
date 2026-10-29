@@ -171,6 +171,7 @@ export const inviteProctor = (examId: string, input: { name: string; email: stri
 export interface InvitePreview { role: 'CANDIDATE' | 'MENTOR'; name: string; email: string; userId?: string; exam: { code: string; title: string; startsAt: string; endsAt: string; durationMin: number }; deviceBound: boolean }
 export const previewInvite = (token: string) => call(get<InvitePreview>(`/auth/invites/${encodeURIComponent(token)}`))
 export const resendInvite = (inviteId: string) => call(post<InviteSent>(`/invites/${inviteId}/resend`))
+export const getInviteLink = (inviteId: string) => call(get<{ link: string }>(`/invites/${inviteId}/link`))
 export const revealProctorPassword = (inviteId: string) => call(post<{ password: string }>(`/invites/${inviteId}/reveal-password`))
 export const resetProctorPassword = (inviteId: string) => call(post<{ password: string }>(`/invites/${inviteId}/reset-password`))
 export const revokeInvite = (inviteId: string) => call(post<{ inviteId: string; status: InviteStatus }>(`/invites/${inviteId}/revoke`))
