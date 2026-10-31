@@ -22,7 +22,9 @@ const loggable = (url?: string): url is string => !!url && /^https?:/i.test(url)
 /** The text searched for on a results page, e.g. google.com/search?q=... */
 function searched(url: string): string | undefined {
   const u = new URL(url);
-  return /(^|\.)(google|bing|duckduckgo|yahoo|brave)\.[a-z.]+$/.test(u.hostname) ? u.searchParams.get('q') ?? u.searchParams.get('p') ?? undefined : undefined;
+  // Google's robot check also carries a "q", which is a code rather than a search.
+  if (!/(^|\.)(google|bing|duckduckgo|yahoo|brave)\.[a-z.]+$/.test(u.hostname) || u.pathname.startsWith('/sorry')) return undefined;
+  return u.searchParams.get('q') ?? u.searchParams.get('p') ?? undefined;
 }
 
 /** A picture of the tab in front, kept as proof. Chrome cannot capture its own pages, so this can come back empty. */
@@ -100,20 +102,25 @@ chrome.runtime.onMessage.addListener((msg: ContentMessage, sender, reply) => {
   }
 });
 
-// The toolbar button opens the exam tab, or focuses it if it is already open.
-chrome.action.onClicked.addListener(() => {
-  void (async () => {
-    const { examTabId } = await store.get();
-    if (examTabId !== undefined) {
-      try {
-        const tab = await chrome.tabs.update(examTabId, { active: true });
-        if (tab?.windowId !== undefined) await chrome.windows.update(tab.windowId, { focused: true });
-        return;
-      } catch {
-        // The tab was closed; open a new one below.
-      }
+/** Opens the exam tab, or focuses it if it is already open. */
+async function openExam(): Promise<void> {
+  const { examTabId } = await store.get();
+  if (examTabId !== undefined) {
+    try {
+      const tab = await chrome.tabs.update(examTabId, { active: true });
+      if (tab?.windowId !== undefined) await chrome.windows.update(tab.windowId, { focused: true });
+      return;
+    } catch {
+      // The tab was closed; open a new one below.
     }
-    const tab = await chrome.tabs.create({ url: chrome.runtime.getURL('exam.html') });
-    await store.set({ examTabId: tab.id });
-  })();
+  }
+  const tab = await chrome.tabs.create({ url: chrome.runtime.getURL('exam.html') });
+  await store.set({ examTabId: tab.id });
+}
+
+chrome.action.onClicked.addListener(() => void openExam());
+
+// Adding the extension goes straight to the exam sign-in.
+chrome.runtime.onInstalled.addListener(({ reason }) => {
+  if (reason === 'install') void openExam();
 });

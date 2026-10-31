@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { notFound, useParams } from 'next/navigation'
 import { motion, useReducedMotion } from 'framer-motion'
-import { ArrowRight, BarChart3, Library, Search, ShieldAlert, Users, type LucideIcon } from 'lucide-react'
+import { ArrowRight, BarChart3, KeyRound, Library, Search, ShieldAlert, Users, type LucideIcon } from 'lucide-react'
 import { ExamStatusBadge } from '@/components/admin/ExamStatusBadge'
 import { ErrorState, Skeleton } from '@/components/admin/States'
 import { listExams } from '@/lib/api'
@@ -14,6 +14,7 @@ import { formatDate, formatTime, useAsyncData } from '@/lib/adminHooks'
 const SECTIONS: Record<string, { title: string; blurb: string; icon: LucideIcon; target: string; cta: string; art?: string }> = {
   questions: { title: 'Question bank', blurb: 'Write, import and reorder multiple-choice and numeric questions for an exam.', icon: Library, target: 'questions', cta: 'Open questions', art: '/images/illustrations/question-bank.svg' },
   candidates: { title: 'Candidates', blurb: 'Import candidates and track who is invited, emailed or in the exam.', icon: Users, target: 'credentials', cta: 'Manage candidates' },
+  credentials: { title: 'Credentials', blurb: 'Generate Exam ID, Candidate ID and passwords and email them securely.', icon: KeyRound, target: 'credentials', cta: 'Send credentials', art: '/images/illustrations/credentials.svg' },
   results: { title: 'Results', blurb: 'Scores, pass rate and rankings with Excel and PDF exports.', icon: BarChart3, target: 'reports', cta: 'View results' },
   reports: { title: 'Violation reports', blurb: 'Violation heatmaps, flagged candidates and evidence for review.', icon: ShieldAlert, target: 'reports', cta: 'Open report' },
 }

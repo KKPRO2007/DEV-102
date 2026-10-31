@@ -38,7 +38,7 @@ const show = (...children: Child[]) => app.replaceChildren(...children.filter((c
 const message = (e: unknown) => (e instanceof Error ? e.message : 'Something went wrong. Try again.');
 
 function card(title: string, sub: string, ...body: Child[]): HTMLElement {
-  return h('main', { class: 'card' }, h('img', { src: 'icon.png', alt: '', class: 'logo' }), h('h1', {}, title), h('p', { class: 'muted' }, sub), ...body);
+  return h('main', { class: 'card' }, h('img', { src: 'icons/icon128.png', alt: '', class: 'logo' }), h('h1', {}, title), h('p', { class: 'muted' }, sub), ...body);
 }
 
 /** A form whose submit button shows progress and whose errors appear inline. */

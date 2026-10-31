@@ -10,9 +10,9 @@ Lets a candidate take a proctored exam in Chrome instead of the desktop app. The
 
 It signs in through `/auth/invites/login`, so the link locks to one browser, and sessions keep the same OTP and face requirements as the desktop app. Proctor links are refused.
 
-## Release
+## Publish
 
-Bump `version` in `manifest.json`, then run `API_URL=https://<api> npm run release:extension`. The zip goes on the newest GitHub release, and `/download` offers it.
+Candidates add it from its Chrome Web Store listing. The website does not link to it. `docs/extension-store.md` has the steps and the listing text.
 
 ## Build and load
 
@@ -27,6 +27,5 @@ The manifest's `key` fixes the extension ID to `fgfompcfejncbbpbipjokoniblfihbnm
 
 ## Limits
 
-- Until it is on the Chrome Web Store and Edge Add-ons, candidates install it with Load unpacked. `docs/deploy.md` covers publishing.
 - The proctor gets webcam frames and a screen picture every 20 s, but not the desktop app's live screen video.
-- Typing is tracked on the AI sites listed in `manifest.json`. A site already open when the exam starts begins tracking after it reloads.
+- Typing is tracked on the AI sites listed in `manifest.json`.

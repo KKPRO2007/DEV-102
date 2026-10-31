@@ -107,6 +107,10 @@ The installer is not code-signed, so Windows SmartScreen shows "unknown publishe
 
 For a local test build without publishing, `VITE_API_URL=https://<api> npm run build -w apps/desktop` writes the installer to `apps/desktop/release/`, and a locally running API serves it at `/api/v1/downloads/windows`.
 
+### Browser extension
+
+The website does not offer the extension. `docs/extension-store.md` covers publishing it to the store.
+
 ## 5. Check the deployment
 
 1. `https://<api>/health` returns ok, and `https://<api>/api/v1/public/stats` returns numbers.

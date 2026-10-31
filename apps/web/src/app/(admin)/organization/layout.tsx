@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
-  BarChart3, ChevronRight, ClipboardList, Keyboard, LayoutDashboard, Library, LogOut, Menu,
+  BarChart3, ChevronRight, ClipboardList, Keyboard, KeyRound, LayoutDashboard, Library, LogOut, Menu,
   PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, ShieldAlert, ShieldCheck, Upload, Users, X,
   type LucideIcon,
 } from 'lucide-react'
@@ -28,6 +28,7 @@ const NAV: { label: string; items: NavItem[] }[] = [
   { label: 'Content', items: [
     { label: 'Question bank', href: '/organization/questions', icon: Library },
     { label: 'Candidates', href: '/organization/candidates', icon: Users },
+    { label: 'Credentials', href: '/organization/credentials', icon: KeyRound },
   ] },
   { label: 'Insights', items: [
     { label: 'Results', href: '/organization/results', icon: BarChart3 },
@@ -42,6 +43,7 @@ const SEARCH_ENTRIES: SearchEntry[] = [
   { id: 'p-exams', label: 'Exams', hint: 'Page · all exams', href: '/organization/exams', icon: ClipboardList },
   { id: 'p-q', label: 'Question bank', hint: 'Page · MCQ manager', href: '/organization/questions', icon: Library },
   { id: 'p-cand', label: 'Candidates', hint: 'Page · import and manage', href: '/organization/candidates', icon: Users },
+  { id: 'p-cred', label: 'Credentials and emails', hint: 'Page · send login details', href: '/organization/credentials', icon: KeyRound },
   { id: 'p-res', label: 'Results', hint: 'Page · scores and ranks', href: '/organization/results', icon: BarChart3 },
   { id: 'p-rep', label: 'Violation reports', hint: 'Page · review penalties', href: '/organization/reports', icon: ShieldAlert },
   { id: 'p-set', label: 'Settings', hint: 'Page · name and password', href: '/organization/settings', icon: Settings },

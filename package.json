@@ -25,7 +25,7 @@
     "python:install": "node scripts/python.cjs install",
     "smoke": "node scripts/smoke.mjs",
     "release:desktop": "node scripts/release-desktop.mjs",
-    "release:extension": "node scripts/release-extension.mjs",
+    "package:extension": "node scripts/package-extension.mjs",
     "share": "node scripts/share.mjs",
     "share:tunnel": "node scripts/share.mjs --tunnel",
     "build": "npm run build --workspaces --if-present",

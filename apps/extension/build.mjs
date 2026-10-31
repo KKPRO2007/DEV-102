@@ -1,7 +1,7 @@
 // Builds the unpacked extension into dist/. API_URL (default http://localhost:4000) is baked into the
 // scripts and the manifest's host permission. Load dist/ from chrome://extensions with Developer mode on.
 import { build } from 'esbuild';
-import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -23,8 +23,10 @@ await build({
   logLevel: 'warning',
 });
 
-const manifest = readFileSync(join(here, 'manifest.json'), 'utf8').replaceAll('__API__', api);
-writeFileSync(join(out, 'manifest.json'), manifest);
+const manifest = JSON.parse(readFileSync(join(here, 'manifest.json'), 'utf8').replaceAll('__API__', api));
+// The store assigns its own ID and refuses a package with a key; the key only fixes the ID of an unpacked copy.
+if (process.env.STORE_BUILD) delete manifest.key;
+writeFileSync(join(out, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
 for (const f of ['exam.html', 'exam.css']) copyFileSync(join(here, 'static', f), join(out, f));
-copyFileSync(join(here, '..', 'desktop', 'public', 'images', 'logo.png'), join(out, 'icon.png'));
+cpSync(join(here, 'static', 'icons'), join(out, 'icons'), { recursive: true });
 console.log(`Built apps/extension/dist for ${api}`);

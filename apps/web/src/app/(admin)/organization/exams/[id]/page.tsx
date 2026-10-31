@@ -222,7 +222,7 @@ function CandidatesTab({ id, exam }: { id: string; exam: Exam }) {
     <section className={cx(cardCls, 'p-6')}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-heading text-base font-semibold text-text">{data.total.toLocaleString('en-IN')} candidates assigned to {exam.code}</h2>
-        <div className="flex gap-2"><Link href={`/organization/candidates?exam=${id}`} className={btnGhost}><Users className="h-4 w-4" aria-hidden="true" /> Manage</Link><Link href={`/organization/exams/${id}/credentials`} className={btnPrimary}><Mail className="h-4 w-4" aria-hidden="true" /> Credentials</Link></div>
+        <div className="flex gap-2"><Link href={`/organization/candidates?exam=${id}`} className={btnGhost}><Users className="h-4 w-4" aria-hidden="true" /> Manage</Link><Link href={`/organization/credentials?exam=${id}`} className={btnPrimary}><Mail className="h-4 w-4" aria-hidden="true" /> Credentials</Link></div>
       </div>
       <div className="mt-5 flex h-3 overflow-hidden rounded-full bg-slate-100" role="img" aria-label="Candidate status distribution">{rows.map(([k, v, c]) => <div key={k} className={c} style={{ width: `${(v / data.total) * 100}%` }} />)}</div>
       <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{rows.filter(([, v]) => v > 0).map(([k, v, c]) => <li key={k} className="flex items-center gap-3 rounded-xl border border-border p-3 text-sm"><span className={cx('h-2.5 w-2.5 rounded-full', c)} aria-hidden="true" /><span className="flex-1 text-slate-600">{k}</span><span className="font-semibold tabular-nums text-text">{v.toLocaleString('en-IN')}</span></li>)}</ul>

@@ -48,7 +48,7 @@ services:
         sync: false
       - key: DESKTOP_RELEASE_REPO
         value: Amritansh369/DEV-102
-      # Store listings of the extension; set them once it is published (docs/deploy.md, section 4).
+      # Store listings of the extension; set them once it is published (docs/extension-store.md).
       - key: EXTENSION_CHROME_URL
         sync: false
       - key: EXTENSION_EDGE_URL

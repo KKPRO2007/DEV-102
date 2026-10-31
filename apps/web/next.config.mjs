@@ -11,7 +11,6 @@ const nextConfig = {
       { source: '/admin/:path*', destination: '/organization/:path*', permanent: true },
       { source: '/mentor', destination: '/proctor', permanent: true },
       { source: '/mentor/:path*', destination: '/proctor/:path*', permanent: true },
-      { source: '/organization/credentials', destination: '/organization/candidates', permanent: true },
     ];
   },
 };
