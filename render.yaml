@@ -1,4 +1,4 @@
-# Render blueprint on the free plan: API and AI agent as two free web services. PostgreSQL is on Neon. See docs/deploy.md.
+# Render blueprint on the free plan: API and AI agent as two free web services. PostgreSQL is on Neon.
 # Free services sleep after 15 minutes idle and have no persistent disk, so evidence images last until the next restart.
 # Free services cannot use the private network, so the API calls the agent on its public URL; X-Agent-Key protects it.
 services:
@@ -22,7 +22,7 @@ services:
           type: web
           name: dev102-agent
           envVarKey: AGENT_API_KEY
-      # Set these in the dashboard after the first deploy (docs/deploy.md, step 3).
+      # Set these in the dashboard after the first deploy.
       - key: AGENT_URL
         sync: false
       - key: CLIENT_URL
@@ -39,7 +39,7 @@ services:
         sync: false
       - key: MAIL_FROM
         sync: false
-      # Free Render services cannot reach SMTP ports, so real email goes through Brevo's HTTPS API (docs/deploy.md).
+      # Free Render services cannot reach SMTP ports, so real email goes through Brevo's HTTPS API.
       - key: BREVO_API_KEY
         sync: false
       - key: ALERT_WEBHOOK_URL
@@ -48,7 +48,7 @@ services:
         sync: false
       - key: DESKTOP_RELEASE_REPO
         value: Amritansh369/DEV-102
-      # Store listings of the extension; set them once it is published (docs/extension-store.md).
+      # Store listings of the extension; set them once it is published.
       - key: EXTENSION_CHROME_URL
         sync: false
       - key: EXTENSION_EDGE_URL
@@ -70,7 +70,7 @@ services:
     envVars:
       - key: AGENT_API_KEY
         generateValue: true
-      # Optional AI vision and query checks. Free: Gemini first, Hugging Face as fallback (docs/deploy.md).
+      # Optional AI vision and query checks. Free: Gemini first, Hugging Face as fallback.
       - key: LLM_API_KEY
         sync: false
       - key: LLM_MODEL

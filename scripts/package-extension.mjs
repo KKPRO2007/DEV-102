@@ -1,4 +1,4 @@
-// Builds the Chrome extension against the production API and zips it for uploading to the store (docs/extension-store.md).
+// Builds the Chrome extension against the production API and zips it for uploading to the store.
 // Bump "version" in apps/extension/manifest.json first.
 //
 //   API_URL=https://<api> npm run package:extension
